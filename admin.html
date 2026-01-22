@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>لوحة الإدارة | بوابة اللجنة العلمية</title>
+  <title>لوحة الإدارة</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,56 +15,52 @@
   <style>
     body{ font-family:'Cairo', sans-serif; background:#0b1026; color:#fff; }
     .glass{ background: rgba(15,23,42,.72); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.08); }
+    .input{ background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1); border-radius: 16px; padding: 10px 12px; outline:none; }
+    .btn{ border-radius: 16px; padding: 10px 14px; font-weight: 800; }
   </style>
 </head>
-
 <body class="min-h-screen">
-  <div class="max-w-4xl mx-auto p-6">
+  <div class="max-w-5xl mx-auto p-6">
 
     <div class="glass rounded-3xl p-6 mb-6">
       <h1 class="text-2xl font-black">لوحة الإدارة</h1>
-      <p class="text-sm text-white/60 mt-1">إدارة الملفات المرفوعة (Pending / Approved)</p>
+      <p class="text-sm text-white/60 mt-1">نشر الملفات Public + تصنيف + حذف</p>
     </div>
 
-    <!-- Login Box -->
-    <div id="loginBox" class="glass rounded-3xl p-6">
-      <h2 class="text-lg font-black mb-4">تسجيل دخول المدير</h2>
+    <div class="glass rounded-3xl p-6 mb-6">
+      <h2 class="text-lg font-black mb-4">تسجيل دخول الأدمن</h2>
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <input id="email" type="email" placeholder="البريد الإلكتروني"
-               class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none">
-        <input id="password" type="password" placeholder="كلمة المرور"
-               class="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 outline-none">
+        <input id="email" type="email" placeholder="البريد الإلكتروني" class="input w-full">
+        <input id="password" type="password" placeholder="كلمة المرور" class="input w-full">
       </div>
 
       <div class="mt-4 flex gap-3">
-        <button id="loginBtn" class="px-5 py-3 rounded-2xl bg-indigo-600 font-black">دخول</button>
-        <button id="logoutBtn" class="px-5 py-3 rounded-2xl bg-white/10 font-black hidden">تسجيل خروج</button>
+        <button id="loginBtn" class="btn bg-indigo-600">دخول</button>
+        <button id="logoutBtn" class="btn bg-white/10 hidden">تسجيل خروج</button>
+        <button id="refreshBtn" class="btn bg-white/10 hidden">تحديث</button>
       </div>
 
       <p id="loginMsg" class="mt-3 text-sm text-white/60"></p>
     </div>
 
-    <!-- Admin Panel -->
-    <div id="adminPanel" class="hidden mt-6">
-      <div class="glass rounded-3xl p-6 mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 class="text-lg font-black">الملفات المعلقة (Pending)</h2>
-          <p class="text-xs text-white/50 mt-1">اعتماد أو رفض أو حذف</p>
-        </div>
-        <button id="refreshBtn" class="px-4 py-2 rounded-2xl bg-white/10 font-black">تحديث</button>
-      </div>
-
-      <div id="pendingList" class="space-y-3"></div>
-
-      <div class="glass rounded-3xl p-6 mt-6 mb-4 flex items-center justify-between gap-3">
-        <div>
-          <h2 class="text-lg font-black">آخر الملفات المعتمدة (Approved)</h2>
-          <p class="text-xs text-white/50 mt-1">عرض سريع</p>
+    <div id="panel" class="hidden">
+      <div class="glass rounded-3xl p-6 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input id="q" class="input w-full" placeholder="بحث (اسم/ملاحظة/تصنيف)">
+          <select id="pubFilter" class="input w-full">
+            <option value="all">الكل</option>
+            <option value="public">Public فقط</option>
+            <option value="private">Private فقط</option>
+          </select>
+          <select id="sort" class="input w-full">
+            <option value="new">الأحدث</option>
+            <option value="old">الأقدم</option>
+          </select>
         </div>
       </div>
 
-      <div id="approvedList" class="space-y-3"></div>
+      <div id="list" class="space-y-3"></div>
     </div>
 
   </div>
