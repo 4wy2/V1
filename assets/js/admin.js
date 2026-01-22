@@ -12,13 +12,18 @@ const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ===============================
 function escapeHtml(str) {
   return String(str || "").replace(/[&<>"']/g, (s) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;"
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#039;",
   }[s]));
 }
 
 function cardTemplate(item, mode) {
   // mode: "pending" | "approved"
   const created = item.created_at ? new Date(item.created_at).toLocaleString("ar-SA") : "";
+
   return `
     <div class="glass rounded-3xl p-5 flex items-start justify-between gap-4">
       <div class="text-right">
@@ -66,7 +71,7 @@ const pendingList = document.getElementById("pendingList");
 const approvedList = document.getElementById("approvedList");
 
 // ===============================
-// Auth
+// Auth UI
 // ===============================
 async function refreshSessionUI() {
   const { data } = await supa.auth.getSession();
@@ -106,11 +111,10 @@ logoutBtn.addEventListener("click", async () => {
 // Load Data
 // ===============================
 async function loadLists() {
-  // Pending
   pendingList.innerHTML = `<div class="text-sm text-white/60 text-center">جاري التحميل...</div>`;
   approvedList.innerHTML = `<div class="text-sm text-white/60 text-center">جاري التحميل...</div>`;
 
-  // pending
+  // Pending (يتطلب admin_select_all policy + authenticated)
   const pendingRes = await supa
     .from("resources")
     .select("id, subject, note, file_url, file_path, status, created_at")
@@ -126,7 +130,7 @@ async function loadLists() {
     pendingList.innerHTML = pendingRes.data.map((x) => cardTemplate(x, "pending")).join("");
   }
 
-  // approved
+  // Approved (مسموح للجميع حسب allow_select_approved)
   const approvedRes = await supa
     .from("resources")
     .select("id, subject, note, file_url, status, created_at")
@@ -146,7 +150,25 @@ async function loadLists() {
 refreshBtn.addEventListener("click", loadLists);
 
 // ===============================
-// Actions (Approve/Reject/Delete)
+// Admin Action via Edge Function
+// (بديل PATCH/UPDATE اللي يسبب CORS)
+// ===============================
+async function adminAction(id, action) {
+  const { data: sessionData } = await supa.auth.getSession();
+  const session = sessionData?.session;
+  if (!session) throw new Error("Not logged in");
+
+  // اسم الـ function لازم يكون مطابق: admin-resource
+  const { data, error } = await supa.functions.invoke("admin-resource", {
+    body: { id, action },
+  });
+
+  if (error) throw error;
+  return data;
+}
+
+// ===============================
+// Actions: Approve / Reject / Delete
 // ===============================
 document.addEventListener("click", async (e) => {
   const btn = e.target?.closest?.("button[data-action]");
@@ -156,7 +178,6 @@ document.addEventListener("click", async (e) => {
   const id = Number(btn.getAttribute("data-id"));
   if (!id) return;
 
-  // تأكيد للحذف
   if (action === "delete") {
     const ok = confirm("تأكيد حذف السجل؟ (سيحذف من قاعدة البيانات فقط)");
     if (!ok) return;
@@ -167,36 +188,11 @@ document.addEventListener("click", async (e) => {
   btn.textContent = "جارٍ التنفيذ...";
 
   try {
-    if (action === "approve") {
-      const { error } = await supa
-        .from("resources")
-        .update({ status: "approved" })
-        .eq("id", id);
-
-      if (error) throw error;
-
-    } else if (action === "reject") {
-      const { error } = await supa
-        .from("resources")
-        .update({ status: "rejected" })
-        .eq("id", id);
-
-      if (error) throw error;
-
-    } else if (action === "delete") {
-      const { error } = await supa
-        .from("resources")
-        .delete()
-        .eq("id", id);
-
-      if (error) throw error;
-    }
-
+    await adminAction(id, action);
     await loadLists();
-
   } catch (err) {
-    alert("خطأ: " + (err?.message || err));
     console.error(err);
+    alert("خطأ: " + (err?.message || err));
   } finally {
     btn.disabled = false;
     btn.textContent = oldText;
