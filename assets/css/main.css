@@ -1,0 +1,58 @@
+:root{
+  --bg0:#060714; --bg1:#0B1026; --stroke: rgba(255,255,255,.08);
+  --brand:#4F46E5; --brand2:#06B6D4; --text: rgba(255,255,255,.92);
+}
+
+body{
+  font-family:'Cairo', sans-serif;
+  background:
+    radial-gradient(900px 380px at 20% 10%, rgba(79,70,229,.25), transparent 60%),
+    radial-gradient(800px 340px at 80% 25%, rgba(6,182,212,.18), transparent 55%),
+    linear-gradient(180deg, var(--bg0), var(--bg1));
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.glass{
+  background: rgba(15,23,42,.72);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--stroke);
+}
+
+.btn-brand{
+  background: linear-gradient(135deg, rgba(79,70,229,1) 0%, rgba(6,182,212,1) 100%);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+.btn-brand:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 18px 40px rgba(79,70,229,.22);
+  filter: brightness(1.02);
+}
+
+.btn-ghost{
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,0.02);
+  transition: background .18s ease, transform .18s ease;
+}
+.btn-ghost:hover{
+  background: rgba(255,255,255,0.06);
+  transform: translateY(-1px);
+}
+
+.no-scroll{ overflow:hidden; }
+
+@keyframes scaleIn {
+  from { transform: scale(0.9); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.animate-scale { animation: scaleIn 0.3s ease-out forwards; }
+
+.disclaimer{
+  margin-top: 28px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  text-align: center;
+}
