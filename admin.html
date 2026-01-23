@@ -3,74 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>بوابة الأرشيف العلمي</title>
+  <title>بوابة التحكم | نظام الأرشيف الذكي</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Cairo', sans-serif; background-color: #020617; color: #f1f5f9; }
-    .archive-item { background: #0f172a; border: 1px solid #1e293b; transition: 0.2s; }
-    .archive-item:hover { border-color: #3b82f6; }
-    input, textarea { background: #020617 !important; border: 1px solid #334155 !important; color: #f1f5f9 !important; border-radius: 8px; outline: none; }
+    .archive-item { background: #0f172a; border: 1px solid #1e293b; transition: 0.3s; }
+    /* ستايل القفل */
+    .locked-row { opacity: 0.5; filter: grayscale(0.3); }
+    .locked-row textarea, .locked-row input { cursor: not-allowed !important; background: #1a1a1a !important; }
+    
+    input, textarea { background: #020617 !important; border: 1px solid #334155 !important; color: #f1f5f9 !important; border-radius: 10px; outline: none; }
     input:focus, textarea:focus { border-color: #3b82f6 !important; }
-    @media (min-width: 1024px) { .desktop-table { display: table; width: 100%; border-spacing: 0 5px; border-collapse: separate; } }
+    @media (min-width: 1024px) { .desktop-table { display: table; width: 100%; border-spacing: 0 8px; border-collapse: separate; } }
     @media (max-width: 1023px) { .desktop-table { display: none; } }
   </style>
 </head>
 <body class="p-2 md:p-6">
 
-  <div class="max-w-[1400px] mx-auto">
-    <header class="flex justify-between items-center mb-4 bg-slate-900/50 p-4 rounded-2xl border border-slate-800">
+  <div class="max-w-[1500px] mx-auto">
+    <header class="flex justify-between items-center mb-4 bg-slate-900/90 backdrop-blur-md p-4 rounded-3xl border border-slate-800 sticky top-0 z-50">
       <div class="flex items-center gap-3">
         <div class="w-3 h-3 bg-blue-500 rounded-full animate-pulse shadow-[0_0_10px_#3b82f6]"></div>
-        <h1 class="text-sm font-black tracking-widest uppercase">Scientific Archive</h1>
+        <h1 class="text-[10px] md:text-sm font-black tracking-widest uppercase">Archive Control Center</h1>
       </div>
-      <div id="whoami" class="text-xs font-bold text-blue-400">جاري التحقق...</div>
+      <div id="whoami" class="text-[10px] md:text-xs font-bold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-full">جاري التحقق...</div>
     </header>
 
     <main id="adminPanel" class="hidden">
-      <div class="bg-blue-600/10 border border-blue-500/20 p-4 rounded-2xl mb-6 flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <span class="text-xl">📊</span>
-          <p id="productivityStats" class="text-xs md:text-sm font-bold text-blue-100">جاري حساب إنجازك اليوم...</p>
+      <div class="bg-gradient-to-r from-blue-900/20 to-transparent border border-blue-500/20 p-5 rounded-3xl mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <div class="text-2xl">🏆</div>
+          <div>
+            <p id="productivityStats" class="text-xs md:text-sm font-bold text-blue-100 italic tracking-tight">جاري حساب إنجازاتك...</p>
+          </div>
         </div>
-        <button id="logoutBtn" class="text-[10px] bg-red-500/10 text-red-400 px-3 py-1 rounded-lg hover:bg-red-500/20">خروج</button>
+        <button id="logoutBtn" class="text-[10px] bg-red-500/10 text-red-400 px-5 py-2 rounded-2xl hover:bg-red-500/20 transition-all font-bold">خروج</button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
-            <button class="filterBtn flex-1 py-2 text-[10px] font-black rounded-lg transition-all" data-filter="pending">المعلقة</button>
-            <button class="filterBtn flex-1 py-2 text-[10px] font-black rounded-lg transition-all" data-filter="approved">المعتمدة</button>
-            <button class="filterBtn flex-1 py-2 text-[10px] font-black rounded-lg transition-all" data-filter="all">الكل</button>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div class="flex gap-1 bg-slate-900 p-1 rounded-2xl border border-slate-800">
+            <button class="filterBtn flex-1 py-2 text-[10px] font-black rounded-xl transition-all" data-filter="pending">المعلقة</button>
+            <button class="filterBtn flex-1 py-2 text-[10px] font-black rounded-xl transition-all" data-filter="approved">المعتمدة</button>
+            <button class="filterBtn flex-1 py-2 text-[10px] font-black rounded-xl transition-all" data-filter="all">الكل</button>
         </div>
-        <input type="text" id="searchBox" placeholder="بحث سريع في الأرشيف..." class="px-4 py-2 text-sm w-full">
-        <div class="flex items-center justify-around bg-slate-900 rounded-xl border border-slate-800 text-[10px] font-bold">
-            <span class="text-amber-500">متبقي: <b id="pendingCount">0</b></span>
-            <span class="text-emerald-500">تم نشرها: <b id="approvedCount">0</b></span>
+        <input type="text" id="searchBox" placeholder="ابحث باسم المادة..." class="px-5 py-2 text-sm w-full">
+        <div class="flex items-center justify-around bg-slate-800/40 rounded-2xl border border-slate-700 px-4 text-[11px] font-bold">
+            <span class="text-amber-500">انتظار: <b id="pendingCount">0</b></span>
+            <span class="text-emerald-500">منشور: <b id="approvedCount">0</b></span>
         </div>
       </div>
 
       <table class="desktop-table">
-        <thead class="text-[10px] text-slate-500 uppercase tracking-tighter">
-            <tr class="text-right">
-                <th class="p-3">اسم المادة</th>
-                <th class="p-3">ملاحظة التدقيق العلمي</th>
-                <th class="p-3 text-center">المسؤول</th>
+        <thead class="text-[10px] text-slate-500 uppercase font-black">
+            <tr class="text-right italic">
+                <th class="p-3">المحتوى والوصف</th>
+                <th class="p-3">قرار اللجنة العلمية</th>
+                <th class="p-3 text-center">بواسطة</th>
                 <th class="p-3 text-center">الإجراء</th>
             </tr>
         </thead>
         <tbody id="desktopList"></tbody>
       </table>
 
-      <div id="mobileList" class="md:hidden space-y-3"></div>
+      <div id="mobileList" class="md:hidden space-y-4"></div>
     </main>
 
-    <div id="loginCard" class="max-w-xs mx-auto mt-24 p-8 bg-slate-900 border border-slate-800 rounded-[2rem] text-center shadow-2xl">
-      <div class="mb-6 text-3xl">🔑</div>
+    <div id="loginCard" class="max-w-sm mx-auto mt-20 p-10 bg-slate-900 border border-slate-800 rounded-[3rem] text-center shadow-2xl">
+      <div class="text-5xl mb-6">🔒</div>
+      <h2 class="text-lg font-black mb-8">تسجيل دخول المشرفين</h2>
       <form id="loginForm" class="space-y-4">
-        <input type="email" id="email" placeholder="البريد" class="w-full p-3 text-xs" required>
-        <input type="password" id="password" placeholder="السر" class="w-full p-3 text-xs" required>
-        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-black text-xs transition-all">دخول النظام</button>
+        <input type="email" id="email" placeholder="البريد الإلكتروني" class="w-full p-4 text-xs" required>
+        <input type="password" id="password" placeholder="كلمة المرور" class="w-full p-4 text-xs" required>
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl font-black text-xs transition-all shadow-lg shadow-blue-500/20">دخول النظام</button>
       </form>
     </div>
   </div>
