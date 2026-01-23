@@ -3,104 +3,70 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>نظام إدارة المحتوى | EE Admin</title>
-
-  <meta name="robots" content="noindex,nofollow">
+  <title>لوحة الإدارة | EE Resources</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
-
   <style>
-    :root{
-      --bg0:#060714; --bg1:#0B1026;
-      --stroke: rgba(255,255,255,.10);
-      --text: rgba(255,255,255,.92);
-    }
-    body{
-      font-family: 'Cairo', sans-serif;
-      background: radial-gradient(900px 380px at 20% 10%, rgba(79,70,229,.20), transparent 60%),
-                  linear-gradient(180deg, var(--bg0), var(--bg1));
-      color: var(--text);
-      min-height: 100vh;
-    }
-    .glass{ background: rgba(15,23,42,.72); backdrop-filter: blur(10px); border: 1px solid var(--stroke); }
-    .btn-brand{ background: linear-gradient(135deg,#4F46E5 0%,#06B6D4 100%); transition: all .2s; }
-    .btn-brand:hover{ transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4); }
-    .btn-ghost{ border: 1px solid var(--stroke); background: rgba(255,255,255,0.02); transition: all .2s; }
-    .btn-ghost:hover{ background: rgba(255,255,255,0.08); }
-    input, select{
-      width:100%; padding: 12px 14px; border-radius: 14px;
-      background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
-      color: #fff; outline: none; transition: all 0.2s;
-    }
-    input:focus{ border-color: #4F46E5; background: rgba(255,255,255,0.1); }
-    .status-card{ transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
-    .status-card:hover{ border-color: rgba(255,255,255,0.3); transform: scale(1.01); }
+    :root { --bg: #060714; --glass: rgba(15, 23, 42, 0.8); --stroke: rgba(255, 255, 255, 0.1); }
+    body { font-family: 'Cairo', sans-serif; background-color: var(--bg); color: white; min-height: 100vh; }
+    .glass { background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--stroke); }
+    .btn-brand { background: linear-gradient(135deg, #4f46e5, #06b6d4); transition: 0.2s; }
+    .btn-brand:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    input { background: rgba(255,255,255,0.05); border: 1px solid var(--stroke); color: white; outline: none; transition: 0.2s; }
+    input:focus { border-color: #4f46e5; background: rgba(255,255,255,0.1); }
+    .status-card { transition: all 0.3s ease; }
+    .hidden { display: none !important; }
   </style>
 </head>
+<body class="p-4 md:p-8">
 
-<body class="p-4 sm:p-8">
   <div class="max-w-5xl mx-auto">
-
-    <header class="glass rounded-3xl p-6 mb-8 flex items-center justify-between shadow-2xl">
+    <header class="glass rounded-3xl p-6 mb-6 flex justify-between items-center">
       <div>
-        <h1 class="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-l from-white to-white/60">لوحة تحكم المشرفين</h1>
-        <p class="text-[11px] text-white/40 tracking-widest mt-1">ELECTRICAL ENGINEERING RESOURCES</p>
+        <h1 class="text-2xl font-black">لوحة التحكم</h1>
+        <p class="text-xs text-white/40 uppercase tracking-widest">Moderation Panel</p>
       </div>
-      <button id="logoutBtn" class="hidden btn-ghost px-5 py-2.5 rounded-2xl text-xs font-bold text-red-400">تسجيل الخروج</button>
+      <button id="logoutBtn" class="hidden text-red-400 font-bold text-sm bg-red-500/10 px-4 py-2 rounded-xl">خروج</button>
     </header>
 
-    <div id="loginCard" class="glass rounded-3xl p-8 max-w-md mx-auto shadow-2xl">
-      <div class="text-center mb-8">
-        <h2 class="text-xl font-bold">مرحباً بك مجدداً</h2>
-        <p class="text-sm text-white/50 mt-2">يرجى تسجيل الدخول للوصول للملفات</p>
-      </div>
+    <div id="loginCard" class="glass rounded-3xl p-8 max-w-md mx-auto mt-10">
+      <h2 class="text-xl font-bold mb-6 text-center">تسجيل دخول المشرفين</h2>
       <form id="loginForm" class="space-y-4">
-        <input id="email" type="email" placeholder="البريد الإلكتروني" required />
-        <input id="password" type="password" placeholder="كلمة المرور" required />
-        <button type="submit" class="btn-brand w-full py-4 rounded-2xl font-black text-lg">دخول</button>
+        <input type="email" id="email" placeholder="البريد الإلكتروني" class="w-full p-3 rounded-xl" required>
+        <input type="password" id="password" placeholder="كلمة المرور" class="w-full p-3 rounded-xl" required>
+        <button type="submit" class="btn-brand w-full py-3 rounded-xl font-black">دخول</button>
       </form>
     </div>
 
     <main id="adminPanel" class="hidden">
-      
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <div class="glass p-5 rounded-3xl border-b-4 border-amber-500">
-          <p class="text-[11px] text-white/40 mb-1">بانتظار المراجعة</p>
-          <span id="pendingCount" class="text-2xl font-black text-amber-400">0</span>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="glass p-5 rounded-2xl border-b-4 border-amber-500">
+          <p class="text-xs text-white/40 mb-1">المعلقة</p>
+          <span id="pendingCount" class="text-2xl font-black text-amber-500">0</span>
         </div>
-        <div class="glass p-5 rounded-3xl border-b-4 border-emerald-500">
-          <p class="text-[11px] text-white/40 mb-1">إجمالي المعتمد</p>
-          <span id="approvedCount" class="text-2xl font-black text-emerald-400">0</span>
+        <div class="glass p-5 rounded-2xl border-b-4 border-emerald-500">
+          <p class="text-xs text-white/40 mb-1">المعتمدة</p>
+          <span id="approvedCount" class="text-2xl font-black text-emerald-500">0</span>
         </div>
-        <div class="col-span-2 glass p-5 rounded-3xl flex items-center justify-between">
-          <div>
-            <p class="text-[11px] text-white/40 mb-1">المستخدم الحالي</p>
-            <span id="whoami" class="text-sm font-bold text-white/80">جاري التحميل...</span>
-          </div>
-          <button id="refreshBtn" class="p-3 btn-ghost rounded-2xl">🔄</button>
+        <div class="col-span-2 glass p-5 rounded-2xl flex items-center justify-between">
+          <span id="whoami" class="text-sm opacity-60 italic">جاري التحميل...</span>
+          <button id="refreshBtn" class="bg-white/5 p-2 rounded-lg hover:bg-white/10">🔄 تحديث</button>
         </div>
       </div>
 
-      <div class="glass rounded-3xl p-6 mb-8">
-        <div class="flex flex-col lg:flex-row gap-4 justify-between items-center">
-          <div class="flex gap-2 w-full lg:w-auto overflow-x-auto pb-2 lg:pb-0">
-            <button class="filterBtn btn-ghost px-6 py-2.5 rounded-xl text-xs font-bold" data-filter="pending">المعلقة</button>
-            <button class="filterBtn btn-ghost px-6 py-2.5 rounded-xl text-xs font-bold" data-filter="approved">المعتمدة</button>
-            <button class="filterBtn btn-ghost px-6 py-2.5 rounded-xl text-xs font-bold" data-filter="all">الكل</button>
-          </div>
-          <div class="relative w-full lg:w-80">
-            <input id="searchBox" placeholder="بحث باسم المادة..." class="pr-10" />
-            <span class="absolute right-4 top-3.5 opacity-30">🔍</span>
-          </div>
+      <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex gap-2 bg-white/5 p-1 rounded-2xl">
+          <button class="filterBtn px-4 py-2 rounded-xl text-xs font-bold" data-filter="pending">المعلقة</button>
+          <button class="filterBtn px-4 py-2 rounded-xl text-xs font-bold" data-filter="approved">المعتمدة</button>
+          <button class="filterBtn px-4 py-2 rounded-xl text-xs font-bold" data-filter="all">الكل</button>
         </div>
+        <input type="text" id="searchBox" placeholder="بحث باسم المادة..." class="flex-1 p-3 rounded-2xl">
       </div>
 
-      <div id="listBox" class="space-y-4">
-        </div>
-      <div id="emptyBox" class="hidden glass rounded-3xl p-20 text-center opacity-40">لا توجد ملفات حالياً</div>
+      <div id="listBox" class="space-y-4"></div>
+      <div id="emptyBox" class="hidden text-center py-20 opacity-30">لا توجد ملفات حالياً</div>
     </main>
-
   </div>
 
   <script src="assets/js/admin.js"></script>
