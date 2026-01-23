@@ -1,291 +1,158 @@
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
-
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
-
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-
-
 let allRows = [];
-
 let currentFilter = "pending";
+let currentUser = { id: "", name: "", isSuper: false };
 
-let currentAdminName = "";
+// --- نظام التنبيهات ---
+function showToast(msg, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    const colors = { success: 'bg-emerald-500', error: 'bg-red-500', info: 'bg-blue-600' };
+    toast.className = `${colors[type]} text-white px-6 py-4 rounded-2xl shadow-2xl font-bold text-sm animate-fade-in`;
+    toast.innerText = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
 
-let currentAdminUserId = "";
-
-let isSuperAdmin = false;
-
-
-
-// ================= AUTH =================
-
+// --- إدارة الدخول ---
 document.getElementById("loginForm").onsubmit = async (e) => {
-
     e.preventDefault();
-
     const btn = e.target.querySelector("button");
-
-    btn.innerText = "جاري الدخول...";
-
-    const { error } = await supa.auth.signInWithPassword({
-
-        email: document.getElementById("email").value,
-
-        password: document.getElementById("password").value
-
-    });
-
-    if (error) { alert("خطأ: " + error.message); btn.innerText = "دخول النظام"; }
-
-    else checkUser();
-
+    try {
+        btn.disabled = true;
+        btn.innerText = "جاري الدخول...";
+        const { error } = await supa.auth.signInWithPassword({
+            email: document.getElementById("email").value,
+            password: document.getElementById("password").value
+        });
+        if (error) throw error;
+        checkUser();
+    } catch (err) {
+        showToast(err.message, 'error');
+        btn.innerText = "دخول النظام";
+        btn.disabled = false;
+    }
 };
-
-
 
 async function checkUser() {
-
     const { data: { session } } = await supa.auth.getSession();
-
     if (!session) return;
 
-    currentAdminUserId = session.user.id;
+    // جلب بيانات المشرف
+    const { data: admin } = await supa.from("admins").select("full_name, is_super").eq("user_id", session.user.id).maybeSingle();
+    
+    currentUser = {
+        id: session.user.id,
+        name: admin?.full_name || session.user.email.split("@")[0],
+        isSuper: !!admin?.is_super
+    };
 
     document.getElementById("loginCard").classList.add("hidden");
-
     document.getElementById("adminPanel").classList.remove("hidden");
-
-
-
-    const { data: admin } = await supa.from("admins").select("full_name,is_super").eq("user_id", currentAdminUserId).maybeSingle();
-
-    currentAdminName = admin?.full_name || session.user.email.split("@")[0];
-
-    isSuperAdmin = !!admin?.is_super;
-
-
-
+    
     document.getElementById("whoami").innerHTML = `
-
-        <div class="flex flex-col">
-
-            <span class="text-blue-400 text-[10px] font-black uppercase tracking-tighter">المشرف المسؤول</span>
-
-            <span class="text-white font-black text-lg">${currentAdminName} ${isSuperAdmin ? '👑' : ''}</span>
-
-        </div>
-
+        <span class="text-blue-400 text-[10px] font-black uppercase">المشرف المسؤول</span>
+        <span class="text-white font-black text-lg">${currentUser.name} ${currentUser.isSuper ? '👑' : ''}</span>
     `;
-
     loadData();
-
 }
 
-
-
-// ================= DATA & RENDER =================
-
+// --- معالجة البيانات ---
 async function loadData() {
-
-    const { data } = await supa.from("resources").select("*").order("created_at", { ascending: false });
-
-    allRows = data || [];
-
-    render();
-
+    const { data, error } = await supa.from("resources").select("*").order("created_at", { ascending: false });
+    if (!error) {
+        allRows = data || [];
+        render();
+    }
 }
-
-
 
 function render() {
-
-    const desktop = document.getElementById("desktopList");
-
-    const mobile = document.getElementById("mobileList");
-
-    const search = (document.getElementById("searchBox").value || "").toLowerCase();
-
-
-
-    // إحصائيات الإنجاز
-
-    const stats = {
-
-        today: allRows.filter(r => r.processed_by_user_id === currentAdminUserId && r.status === "approved").length,
-
-        review: allRows.filter(r => r.processed_by_user_id === currentAdminUserId && r.status === "reviewing").length
-
-    };
-
-    document.getElementById("productivityStats").innerHTML = `
-
-        <div class="flex justify-around items-center h-full text-white">
-
-            <div class="text-center"><p class="text-[9px] text-blue-400 font-bold uppercase">إنجازك</p><p class="text-xl font-black">${stats.today}</p></div>
-
-            <div class="w-px h-8 bg-slate-700"></div>
-
-            <div class="text-center"><p class="text-[9px] text-amber-500 font-bold uppercase">تحت المراجعة</p><p class="text-xl font-black">${stats.review}</p></div>
-
-        </div>
-
-    `;
-
-
-
+    const search = (document.getElementById("searchBox")?.value || "").toLowerCase();
     const filtered = allRows.filter(r => (currentFilter === "all" || r.status === currentFilter) && (r.subject || "").toLowerCase().includes(search));
 
+    // تحديث الإحصائيات والإجمالي
+    document.getElementById("totalCount").textContent = filtered.length;
+    updateStats();
 
+    const desktop = document.getElementById("desktopList");
+    const mobile = document.getElementById("mobileList");
 
-    const getActionBtns = (row) => {
-
-        const isMe = row.processed_by_user_id === currentAdminUserId;
-
+    const html = filtered.map(row => {
+        const isMe = row.processed_by_user_id === currentUser.id;
         const isFree = !row.processed_by_user_id;
+        const canManage = isMe || currentUser.isSuper;
 
-        let btns = `<a href="${row.file_url}" target="_blank" class="flex-1 bg-blue-600/20 text-blue-400 py-3 rounded-xl text-center text-[10px] font-black border border-blue-600/20 shadow-sm transition-all hover:bg-blue-600 hover:text-white">فتح</a>`;
+        let actionBtns = `<a href="${row.file_url}" target="_blank" class="bg-blue-600/20 text-blue-400 px-4 py-2 rounded-xl text-[10px] font-black hover:bg-blue-600 hover:text-white transition-all">فتح</a>`;
 
-
-
-        if ((isFree || isSuperAdmin) && row.status === "pending") {
-
-            btns += `<button onclick="claim(${row.id})" class="flex-[2] bg-amber-600 text-white py-3 rounded-xl text-[10px] font-black shadow-lg shadow-amber-900/20">حجز للمراجعة</button>`;
-
-        }
-
-        if (isMe || isSuperAdmin) {
-
-            if (row.status === "reviewing") {
-
-                btns += `<button onclick="updateStatus(${row.id}, 'approved')" class="flex-[2] bg-emerald-600 text-white py-3 rounded-xl text-[10px] font-black shadow-lg shadow-emerald-900/20 text-center">اعتماد ✅</button>`;
-
-                btns += `<button onclick="release(${row.id})" class="flex-1 bg-slate-800 text-slate-400 py-3 rounded-xl text-[10px] font-bold">إلغاء</button>`;
-
-            } else if (row.status === "approved") {
-
-                btns += `<button onclick="updateStatus(${row.id}, 'pending')" class="flex-[2] bg-red-500/10 text-red-500 py-3 rounded-xl text-[10px] font-black border border-red-500/10">سحب النشر</button>`;
-
-            }
-
+        if (row.status === "pending" && (isFree || currentUser.isSuper)) {
+            actionBtns += `<button onclick="updateRow(${row.id}, 'claim')" class="bg-amber-600 text-white px-4 py-2 rounded-xl text-[10px] font-black">حجز</button>`;
+        } else if (canManage && row.status === "reviewing") {
+            actionBtns += `<button onclick="updateRow(${row.id}, 'approved')" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black">اعتماد ✅</button>`;
+            actionBtns += `<button onclick="updateRow(${row.id}, 'release')" class="text-slate-500 text-[10px]">إلغاء</button>`;
         } else if (!isFree && !isMe) {
-
-            btns = `<div class="w-full text-center py-3 bg-slate-900/50 rounded-xl text-[10px] text-slate-500 italic border border-slate-800">🔒 محجوز لـ ${row.processed_by_name || 'مشرف آخر'}</div>`;
-
+            actionBtns = `<span class="text-[10px] text-slate-500 italic">🔒 لـ ${row.processed_by_name}</span>`;
         }
 
-        return btns;
+        return {
+            desktop: `<tr class="border-b border-slate-800/50 hover:bg-white/5 transition-all">
+                <td class="p-4 text-white font-bold">${row.subject || "--"}</td>
+                <td class="p-4"><textarea onchange="updateNote(${row.id}, this.value)" class="w-full bg-black/20 border border-slate-700 rounded-lg p-2 text-xs text-slate-300">${row.admin_note || ""}</textarea></td>
+                <td class="p-4 text-center text-[10px] text-blue-400">${row.processed_by_name || "--"}</td>
+                <td class="p-4 flex gap-2 justify-end">${actionBtns}</td>
+            </tr>`,
+            mobile: `<div class="bg-slate-900/50 p-5 rounded-3xl border border-slate-800 space-y-3">
+                <h3 class="font-black text-white">${row.subject}</h3>
+                <textarea onchange="updateNote(${row.id}, this.value)" class="w-full bg-black/40 border border-slate-800 rounded-xl p-3 text-xs" placeholder="ملاحظة...">${row.admin_note || ""}</textarea>
+                <div class="flex gap-2">${actionBtns}</div>
+            </div>`
+        };
+    });
 
-    };
-
-
-
-    desktop.innerHTML = filtered.map(row => `
-
-        <tr class="archive-item ${row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId && !isSuperAdmin ? "opacity-40" : ""}">
-
-            <td class="p-4 rounded-r-2xl border-y border-r border-slate-800"><div class="font-black text-white text-sm">${row.subject || "--"}</div></td>
-
-            <td class="p-4 border-y border-slate-800"><textarea onchange="updateNote(${row.id}, this.value)" class="w-full h-12 p-3 text-[11px] bg-black/40 border border-slate-800 rounded-xl outline-none focus:border-blue-500 transition-all">${row.admin_note || ""}</textarea></td>
-
-            <td class="p-4 border-y border-slate-800 text-center text-blue-400/50 font-black text-[10px]">${row.processed_by_name || "--"}</td>
-
-            <td class="p-4 rounded-l-2xl border-y border-l border-slate-800 min-w-[220px]"><div class="flex gap-2">${getActionBtns(row)}</div></td>
-
-        </tr>
-
-    `).join("");
-
-
-
-    mobile.innerHTML = filtered.map(row => `
-
-        <div class="archive-item p-5 rounded-[2.5rem] space-y-4 border border-slate-800 relative shadow-2xl">
-
-            <div class="flex justify-between items-start">
-
-                <div class="flex flex-col"><span class="text-[9px] text-blue-500 font-black uppercase mb-1">${row.status}</span><h3 class="font-black text-white text-lg leading-tight">${row.subject || "--"}</h3></div>
-
-                <div class="bg-blue-500/10 px-3 py-1 rounded-full text-[9px] text-blue-400 font-bold">${row.processed_by_name || 'متاح'}</div>
-
-            </div>
-
-            <textarea onchange="updateNote(${row.id}, this.value)" class="w-full p-4 text-[12px] h-24 bg-black/40 border border-slate-800 rounded-[1.5rem] focus:border-blue-500 outline-none" placeholder="ملاحظة المراجعة...">${row.admin_note || ""}</textarea>
-
-            <div class="flex gap-2 pt-2">${getActionBtns(row)}</div>
-
-        </div>
-
-    `).join("");
-
-    document.getElementById("totalCount").textContent = allRows.length;
-
+    desktop.innerHTML = html.map(h => h.desktop).join("");
+    mobile.innerHTML = html.map(h => h.mobile).join("");
 }
 
+// --- الأكشنات (تم تنظيفها) ---
+window.updateRow = async (id, type) => {
+    let updates = {};
+    if (type === 'claim') updates = { status: 'reviewing', processed_by_user_id: currentUser.id, processed_by_name: currentUser.name };
+    else if (type === 'release') updates = { status: 'pending', processed_by_user_id: null, processed_by_name: null };
+    else updates = { status: type, updated_at: new Date().toISOString() };
 
-
-// ================= ACTIONS =================
-
-window.claim = async (id) => {
-
-    const { error } = await supa.from("resources").update({ 
-
-        status: 'reviewing', 
-
-        processed_by_user_id: currentAdminUserId, 
-
-        processed_by_name: currentAdminName 
-
-    }).eq("id", id);
-
-    if (error) alert("فشل الحجز: تأكد من وجود كولوم processed_by_user_id");
-
-    else loadData();
-
+    const { error } = await supa.from("resources").update(updates).eq("id", id);
+    if (!error) { showToast("تم التحديث بنجاح", "success"); loadData(); }
 };
 
-
-
-window.updateStatus = async (id, s) => {
-
-    await supa.from("resources").update({ status: s, updated_at: new Date().toISOString() }).eq("id", id);
-
-    loadData();
-
+window.updateNote = async (id, note) => {
+    await supa.from("resources").update({ admin_note: note }).eq("id", id);
+    showToast("تم حفظ الملاحظة", "info");
 };
 
+function updateStats() {
+    const stats = {
+        done: allRows.filter(r => r.processed_by_user_id === currentUser.id && r.status === "approved").length,
+        pending: allRows.filter(r => r.processed_by_user_id === currentUser.id && r.status === "reviewing").length
+    };
+    document.getElementById("productivityStats").innerHTML = `
+        <div class="text-center"><p class="text-[8px] text-slate-500 uppercase">منجز</p><p class="text-lg font-black text-emerald-400">${stats.done}</p></div>
+        <div class="w-px h-6 bg-slate-700"></div>
+        <div class="text-center"><p class="text-[8px] text-slate-500 uppercase">قيد المراجعة</p><p class="text-lg font-black text-amber-400">${stats.pending}</p></div>
+    `;
+}
 
-
-window.updateNote = async (id, n) => {
-
-    await supa.from("resources").update({ admin_note: n }).eq("id", id);
-
-};
-
-
-
-window.release = async (id) => {
-
-    await supa.from("resources").update({ processed_by_user_id: null, processed_by_name: null, status: "pending" }).eq("id", id);
-
-    loadData();
-
-};
-
-
-
-document.querySelectorAll(".filterBtn").forEach(b => b.onclick = () => {
-
-    currentFilter = b.dataset.filter;
-
-    document.querySelectorAll(".filterBtn").forEach(x => x.classList.remove("bg-blue-600", "text-white"));
-
-    b.classList.add("bg-blue-600", "text-white");
-
-    render();
-
+// الفلاتر والبحث
+document.getElementById("searchBox").oninput = render;
+document.querySelectorAll(".filterBtn").forEach(btn => {
+    btn.onclick = () => {
+        currentFilter = btn.dataset.filter;
+        document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("bg-blue-600", "text-white"));
+        btn.classList.add("bg-blue-600", "text-white");
+        render();
+    };
 });
-
-
 
 checkUser();
