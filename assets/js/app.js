@@ -1,5 +1,5 @@
 // ===============================
-// Supabase Config
+// Supabase Client
 // ===============================
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY =
@@ -7,188 +7,114 @@ const SUPABASE_ANON_KEY =
 
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// اسم البكت (لازم يكون Private في Storage)
-const BUCKET = "ee-resources";
-
 // ===============================
 // DOM
 // ===============================
-const overlay = document.getElementById("overlay");
-const sidebar = document.getElementById("sidebar");
+const approvedBox = document.getElementById("approvedResources");
 
-const openSidebarBtn = document.getElementById("openSidebar");
-const closeSidebarBtn = document.getElementById("closeSidebar");
-
-const uploadModal = document.getElementById("uploadModal");
-const openUploadBtn = document.getElementById("openUploadBtn");
-const closeUploadBtn = document.getElementById("closeUploadBtn");
-const closeSuccessBtn = document.getElementById("closeSuccessBtn");
-
-const formContent = document.getElementById("formContent");
-const successUi = document.getElementById("successUi");
-const form = document.getElementById("eeSourceForm");
-const submitBtn = document.getElementById("submitBtn");
-
-// (موجود في index، لكن بنوقفه لأن العرض صار للأدمن فقط)
-const approvedResourcesBox = document.getElementById("approvedResources");
-
-// ===============================
-// UI Helpers
-// ===============================
-function setBodyScrollLocked(lock) {
-  document.body.style.overflow = lock ? "hidden" : "auto";
-}
-
-function setSubmitLoading(isLoading) {
-  if (!submitBtn) return;
-  submitBtn.disabled = isLoading;
-  submitBtn.style.opacity = isLoading ? "0.7" : "1";
-  submitBtn.textContent = isLoading ? "جارٍ الإرسال..." : "إرسال للمراجعة";
-}
-
-function resetModalUI() {
-  if (formContent) formContent.classList.remove("hidden");
-  if (successUi) successUi.classList.add("hidden");
-  if (form) form.reset();
-  setSubmitLoading(false);
+// إذا ما كان موجود في الصفحة، لا تسوي شيء
+if (approvedBox) {
+  loadPublicResources();
 }
 
 // ===============================
-// Sidebar
+// Helpers
 // ===============================
-function openSidebar() {
-  if (!sidebar || !overlay) return;
-  sidebar.classList.remove("translate-x-full");
-  overlay.classList.remove("hidden");
-  setBodyScrollLocked(true);
+function escapeHtml(str) {
+  return String(str || "").replace(/[&<>"']/g, (s) => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[s]));
 }
 
-function closeSidebar() {
-  if (!sidebar || !overlay) return;
-  sidebar.classList.add("translate-x-full");
-  overlay.classList.add("hidden");
-  setBodyScrollLocked(false);
-}
-
-if (openSidebarBtn) openSidebarBtn.addEventListener("click", openSidebar);
-if (closeSidebarBtn) closeSidebarBtn.addEventListener("click", closeSidebar);
-
-// ===============================
-// Modal
-// ===============================
-function openUploadModal() {
-  if (!uploadModal) return;
-  uploadModal.classList.remove("hidden");
-  uploadModal.classList.add("flex");
-  // نظهر overlay كذلك عشان ESC/Click يقفل
-  if (overlay) overlay.classList.remove("hidden");
-  setBodyScrollLocked(true);
-}
-
-function closeUploadModal() {
-  if (!uploadModal) return;
-  uploadModal.classList.add("hidden");
-  uploadModal.classList.remove("flex");
-  // نخفي overlay إذا السايدبار مقفل
-  if (overlay && sidebar?.classList.contains("translate-x-full")) {
-    overlay.classList.add("hidden");
+function groupByCategory(items) {
+  const map = new Map();
+  for (const it of items) {
+    const key = (it.category && String(it.category).trim()) ? String(it.category).trim() : "بدون تصنيف";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(it);
   }
-  setBodyScrollLocked(false);
-  resetModalUI();
+  return map;
 }
 
-if (openUploadBtn) openUploadBtn.addEventListener("click", openUploadModal);
-if (closeUploadBtn) closeUploadBtn.addEventListener("click", closeUploadModal);
-if (closeSuccessBtn) closeSuccessBtn.addEventListener("click", closeUploadModal);
-
-// overlay click يقفل الاثنين
-if (overlay) {
-  overlay.addEventListener("click", () => {
-    closeSidebar();
-    closeUploadModal();
+async function callFilesApi(action, payload) {
+  const res = await supa.functions.invoke("files-api", {
+    body: { action, payload: payload ?? {} },
   });
-}
 
-// ESC يقفل
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") {
-    closeSidebar();
-    closeUploadModal();
-  }
-});
-
-// ===============================
-// Upload Flow (Public upload + Admin-only view)
-// ===============================
-if (form) {
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-
-    const subject = form.querySelector('input[name="subject"]')?.value?.trim();
-    const note = form.querySelector('input[name="note"]')?.value?.trim();
-    const fileInput = form.querySelector('input[name="file"]');
-    const file = fileInput?.files?.[0];
-
-    if (!subject) {
-      setSubmitLoading(false);
-      return alert("فضلاً اكتب اسم المادة");
-    }
-    if (!file) {
-      setSubmitLoading(false);
-      return alert("فضلاً اختر ملفاً");
-    }
-
-    // حالياً PDF فقط
-    if (file.type !== "application/pdf") {
-      setSubmitLoading(false);
-      return alert("حالياً للتجربة: ارفع PDF فقط.");
-    }
-
-    try {
-      // اسم ملف آمن
-      const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-      const path = `uploads/${Date.now()}_${safeName}`;
-
-      // 1) رفع الملف إلى Storage (Bucket لازم يكون Private)
-      const { error: uploadError } = await supa.storage
-        .from(BUCKET)
-        .upload(path, file, { upsert: false });
-
-      if (uploadError) throw uploadError;
-
-      // 2) إدخال سجل في DB (بدون file_url)
-      const { error: insertError } = await supa.from("resources").insert([
-        {
-          subject,
-          note: note || null,
-          file_path: path,
-        },
-      ]);
-
-      if (insertError) throw insertError;
-
-      // نجاح
-      if (formContent) formContent.classList.add("hidden");
-      if (successUi) successUi.classList.remove("hidden");
-      form.reset();
-      setSubmitLoading(false);
-    } catch (err) {
-      console.error(err);
-      setSubmitLoading(false);
-      alert("صار خطأ أثناء الرفع/الإرسال. تأكد من صلاحيات Storage وRLS.");
-    }
-  });
+  if (res.error) throw new Error(res.error.message || String(res.error));
+  if (res.data && res.data.error) throw new Error(res.data.error);
+  return res.data;
 }
 
 // ===============================
-// Disable public listing section (Admin-only system)
+// Main
 // ===============================
-// بما أنك تبي الملفات للأدمن فقط، نخفي هذا القسم من الصفحة العامة
-if (approvedResourcesBox) {
-  approvedResourcesBox.innerHTML = `
-    <div class="text-center text-[10px] text-white/35">
-      عرض الملفات متاح للأدمن فقط.
-    </div>
+async function loadPublicResources() {
+  approvedBox.innerHTML = `
+    <div class="text-center text-[10px] text-white/30">جاري تحميل المصادر...</div>
   `;
+
+  try {
+    const data = await callFilesApi("list_public", {});
+    const items = Array.isArray(data?.items) ? data.items : [];
+
+    if (!items.length) {
+      approvedBox.innerHTML = `
+        <div class="text-center text-[10px] text-white/25">لا توجد مصادر منشورة حالياً</div>
+      `;
+      return;
+    }
+
+    // تجميع حسب التصنيف
+    const grouped = groupByCategory(items);
+
+    let html = "";
+    for (const [cat, arr] of grouped.entries()) {
+      html += `
+        <div class="mt-6">
+          <div class="flex items-center justify-between mb-3">
+            <div class="font-black text-sm text-white/80">${escapeHtml(cat)}</div>
+            <div class="text-[10px] text-white/30">${arr.length} ملف</div>
+          </div>
+
+          <div class="space-y-3">
+            ${arr.map(r => `
+              <div class="btn-ghost rounded-2xl p-4 flex items-center justify-between gap-3">
+                <div class="text-right">
+                  <div class="font-black text-sm text-white/85">${escapeHtml(r.subject)}</div>
+                  ${r.note ? `<div class="text-[10px] text-white/35 mt-1">${escapeHtml(r.note)}</div>` : ""}
+                  ${Array.isArray(r.tags) && r.tags.length ? `
+                    <div class="mt-2 flex flex-wrap gap-1 justify-end">
+                      ${r.tags.slice(0, 6).map(t => `
+                        <span class="text-[9px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50">
+                          ${escapeHtml(t)}
+                        </span>
+                      `).join("")}
+                    </div>
+                  ` : ""}
+                </div>
+
+                <a class="btn-brand px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap"
+                   href="${r.download_url || "#"}"
+                   ${r.download_url ? `target="_blank" rel="noopener noreferrer"` : `aria-disabled="true"`}
+                   style="${r.download_url ? "" : "opacity:.5; pointer-events:none;"}">
+                  تحميل
+                </a>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    approvedBox.innerHTML = html;
+
+  } catch (err) {
+    console.error(err);
+    approvedBox.innerHTML = `
+      <div class="text-center text-[10px] text-red-300/70">
+        تعذر تحميل المصادر: ${escapeHtml(err?.message || String(err))}
+      </div>
+    `;
+  }
 }
