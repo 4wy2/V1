@@ -1,5 +1,5 @@
 // ===============================
-// Supabase Client
+// 1) إعداد Supabase
 // ===============================
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY =
@@ -7,114 +7,234 @@ const SUPABASE_ANON_KEY =
 
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// ===============================
-// DOM
-// ===============================
-const approvedBox = document.getElementById("approvedResources");
-
-// إذا ما كان موجود في الصفحة، لا تسوي شيء
-if (approvedBox) {
-  loadPublicResources();
-}
+// لازم يكون اسم الـ Bucket مطابق تماماً في Supabase Storage
+const BUCKET = "ee-resources";
 
 // ===============================
-// Helpers
+// 2) مساعدات
 // ===============================
 function escapeHtml(str) {
-  return String(str || "").replace(/[&<>"']/g, (s) => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  return String(str).replace(/[&<>"']/g, (s) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#039;",
   }[s]));
 }
 
-function groupByCategory(items) {
-  const map = new Map();
-  for (const it of items) {
-    const key = (it.category && String(it.category).trim()) ? String(it.category).trim() : "بدون تصنيف";
-    if (!map.has(key)) map.set(key, []);
-    map.get(key).push(it);
-  }
-  return map;
+function setSubmitLoading(isLoading) {
+  const btn = document.getElementById("submitBtn");
+  if (!btn) return;
+  btn.disabled = isLoading;
+  btn.style.opacity = isLoading ? "0.7" : "1";
+  btn.textContent = isLoading ? "جارٍ الإرسال..." : "إرسال للمراجعة";
 }
 
-async function callFilesApi(action, payload) {
-  const res = await supa.functions.invoke("files-api", {
-    body: { action, payload: payload ?? {} },
+// ===============================
+// 3) سايدبار + مودال + ربط الأحداث
+// ===============================
+document.addEventListener("DOMContentLoaded", () => {
+  // عناصر أساسية
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("overlay");
+
+  const openSidebarBtn = document.getElementById("openSidebar");
+  const closeSidebarBtn = document.getElementById("closeSidebar");
+
+  const uploadModal = document.getElementById("uploadModal");
+  const openUploadBtn = document.getElementById("openUploadBtn");
+  const closeUploadBtn = document.getElementById("closeUploadBtn");
+  const closeSuccessBtn = document.getElementById("closeSuccessBtn");
+
+  const formContent = document.getElementById("formContent");
+  const successUi = document.getElementById("successUi");
+  const form = document.getElementById("eeSourceForm");
+
+  // ===== Sidebar =====
+  function openSidebar() {
+    if (!sidebar || !overlay) return;
+    sidebar.classList.remove("translate-x-full");
+    overlay.classList.remove("hidden");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeSidebar() {
+    if (!sidebar || !overlay) return;
+    sidebar.classList.add("translate-x-full");
+    overlay.classList.add("hidden");
+    document.body.style.overflow = "auto";
+  }
+
+  if (openSidebarBtn) openSidebarBtn.addEventListener("click", openSidebar);
+  if (closeSidebarBtn) closeSidebarBtn.addEventListener("click", closeSidebar);
+
+  // ===== Modal =====
+  function openUploadModal() {
+    if (!uploadModal) return;
+    uploadModal.classList.remove("hidden");
+    uploadModal.classList.add("flex");
+    document.body.style.overflow = "hidden";
+  }
+
+  function closeUploadModal() {
+    if (!uploadModal) return;
+    uploadModal.classList.add("hidden");
+    uploadModal.classList.remove("flex");
+    document.body.style.overflow = "auto";
+
+    if (formContent) formContent.classList.remove("hidden");
+    if (successUi) successUi.classList.add("hidden");
+    if (form) form.reset();
+    setSubmitLoading(false);
+  }
+
+  if (openUploadBtn) openUploadBtn.addEventListener("click", openUploadModal);
+  if (closeUploadBtn) closeUploadBtn.addEventListener("click", closeUploadModal);
+  if (closeSuccessBtn) closeSuccessBtn.addEventListener("click", closeUploadModal);
+
+  if (overlay) {
+    overlay.addEventListener("click", () => {
+      closeSidebar();
+      closeUploadModal();
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeSidebar();
+      closeUploadModal();
+    }
   });
 
-  if (res.error) throw new Error(res.error.message || String(res.error));
-  if (res.data && res.data.error) throw new Error(res.data.error);
-  return res.data;
-}
+  // ===============================
+  // 4) إرسال النموذج: رفع PDF + إدخال DB
+  // ===============================
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      setSubmitLoading(true);
 
-// ===============================
-// Main
-// ===============================
-async function loadPublicResources() {
-  approvedBox.innerHTML = `
-    <div class="text-center text-[10px] text-white/30">جاري تحميل المصادر...</div>
-  `;
+      const subject = form.querySelector('input[name="subject"]')?.value?.trim() || "";
+      const note = form.querySelector('input[name="note"]')?.value?.trim() || "";
+      const fileInput = form.querySelector('input[name="file"]');
+      const file = fileInput?.files?.[0];
 
-  try {
-    const data = await callFilesApi("list_public", {});
-    const items = Array.isArray(data?.items) ? data.items : [];
+      if (!subject) { setSubmitLoading(false); return alert("فضلاً اكتب اسم المادة"); }
+      if (!file)    { setSubmitLoading(false); return alert("فضلاً اختر ملفاً"); }
 
-    if (!items.length) {
-      approvedBox.innerHTML = `
-        <div class="text-center text-[10px] text-white/25">لا توجد مصادر منشورة حالياً</div>
-      `;
-      return;
-    }
+      // تجربة أولى: PDF فقط
+      if (file.type !== "application/pdf") {
+        setSubmitLoading(false);
+        return alert("حالياً للتجربة: ارفع PDF فقط.");
+      }
 
-    // تجميع حسب التصنيف
-    const grouped = groupByCategory(items);
+      try {
+        // اسم ملف آمن
+        const safeName = file.name.replace(/[^\w.\-]+/g, "_");
+        const path = `pending/${Date.now()}_${safeName}`;
 
-    let html = "";
-    for (const [cat, arr] of grouped.entries()) {
-      html += `
-        <div class="mt-6">
-          <div class="flex items-center justify-between mb-3">
-            <div class="font-black text-sm text-white/80">${escapeHtml(cat)}</div>
-            <div class="text-[10px] text-white/30">${arr.length} ملف</div>
-          </div>
+        // 1) رفع الملف في Storage
+        const { error: uploadError } = await supa
+          .storage
+          .from(BUCKET)
+          .upload(path, file, { upsert: false });
 
-          <div class="space-y-3">
-            ${arr.map(r => `
-              <div class="btn-ghost rounded-2xl p-4 flex items-center justify-between gap-3">
-                <div class="text-right">
-                  <div class="font-black text-sm text-white/85">${escapeHtml(r.subject)}</div>
-                  ${r.note ? `<div class="text-[10px] text-white/35 mt-1">${escapeHtml(r.note)}</div>` : ""}
-                  ${Array.isArray(r.tags) && r.tags.length ? `
-                    <div class="mt-2 flex flex-wrap gap-1 justify-end">
-                      ${r.tags.slice(0, 6).map(t => `
-                        <span class="text-[9px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/50">
-                          ${escapeHtml(t)}
-                        </span>
-                      `).join("")}
-                    </div>
-                  ` : ""}
-                </div>
+        if (uploadError) throw uploadError;
 
-                <a class="btn-brand px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap"
-                   href="${r.download_url || "#"}"
-                   ${r.download_url ? `target="_blank" rel="noopener noreferrer"` : `aria-disabled="true"`}
-                   style="${r.download_url ? "" : "opacity:.5; pointer-events:none;"}">
-                  تحميل
-                </a>
-              </div>
-            `).join("")}
-          </div>
-        </div>
-      `;
-    }
+        // 2) رابط عام (يتطلب أن البكت Public)
+        const { data: publicData } = supa
+          .storage
+          .from(BUCKET)
+          .getPublicUrl(path);
 
-    approvedBox.innerHTML = html;
+        const fileUrl = publicData?.publicUrl;
 
-  } catch (err) {
-    console.error(err);
-    approvedBox.innerHTML = `
-      <div class="text-center text-[10px] text-red-300/70">
-        تعذر تحميل المصادر: ${escapeHtml(err?.message || String(err))}
-      </div>
-    `;
+        if (!fileUrl) {
+          throw new Error("لم يتم إنشاء رابط عام للملف. تأكد أن الـ Bucket Public.");
+        }
+
+        // 3) إدخال سجل في جدول resources بحالة pending
+        const { error: insertError } = await supa
+          .from("resources")
+          .insert([{
+            subject,
+            note: note || null,
+            file_path: path,
+            file_url: fileUrl,
+            status: "pending",
+          }]);
+
+        if (insertError) throw insertError;
+
+        // نجاح
+        if (formContent) formContent.classList.add("hidden");
+        if (successUi) successUi.classList.remove("hidden");
+        form.reset();
+        setSubmitLoading(false);
+
+      } catch (err) {
+        console.error(err);
+        setSubmitLoading(false);
+
+        // رسائل أوضح حسب نوع الخطأ
+        const msg = String(err?.message || err || "");
+        if (msg.includes("row-level security") || msg.includes("RLS") || msg.includes("permission")) {
+          alert("رفض صلاحيات (RLS). تأكد من سياسات INSERT و SELECT على جدول resources.");
+        } else if (msg.toLowerCase().includes("bucket") || msg.toLowerCase().includes("not found")) {
+          alert("تأكد من وجود Bucket باسم ee-resources في Storage.");
+        } else if (msg.includes("Public")) {
+          alert("تأكد أن Bucket ee-resources مضبوط على Public أو عدّل الكود لاستخدام Signed URLs.");
+        } else {
+          alert("صار خطأ أثناء الرفع/الإرسال. راجع Console للتفاصيل.");
+        }
+      }
+    });
   }
+
+  // ===============================
+  // 5) تحميل وعرض المصادر المعتمدة
+  // ===============================
+  loadApprovedResources();
+});
+
+// ===============================
+// 6) تحميل الموارد المعتمدة من Supabase
+// ===============================
+async function loadApprovedResources() {
+  const box = document.getElementById("approvedResources");
+  if (!box) return;
+
+  box.innerHTML = '<div class="text-center text-[10px] text-white/30">جاري تحميل المصادر...</div>';
+
+  const { data, error } = await supa
+    .from("resources")
+    .select("id, subject, note, file_url, created_at")
+    .eq("status", "approved")
+    .order("created_at", { ascending: false })
+    .limit(10);
+
+  if (error) {
+    console.error(error);
+    box.innerHTML = '<div class="text-center text-[10px] text-red-300/70">تعذر تحميل المصادر</div>';
+    return;
+  }
+
+  if (!data || data.length === 0) {
+    box.innerHTML = '<div class="text-center text-[10px] text-white/25">لا توجد مصادر معتمدة حالياً</div>';
+    return;
+  }
+
+  box.innerHTML = data.map((item) => `
+    <div class="btn-ghost rounded-2xl p-4 flex items-center justify-between gap-3">
+      <div class="text-right">
+        <div class="font-black text-sm text-white/80">${escapeHtml(item.subject)}</div>
+        ${item.note ? `<div class="text-[10px] text-white/35 mt-1">${escapeHtml(item.note)}</div>` : ""}
+      </div>
+      <a class="btn-brand px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap"
+        href="${item.file_url}" target="_blank" rel="noopener noreferrer">
+        تحميل
+      </a>
+    </div>
+  `).join("");
 }
