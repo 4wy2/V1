@@ -5,102 +5,86 @@ const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let allRows = [];
 let currentFilter = "pending";
 let currentAdminName = "";
-let currentAdminEmail = "";
 let currentAdminUserId = "";
 let isSuperAdmin = false;
 
 // ================= AUTH =================
 document.getElementById("loginForm").onsubmit = async (e) => {
     e.preventDefault();
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
     const btn = e.target.querySelector("button");
-    btn.innerText = "جاري التحقق...";
-
-    const { error } = await supa.auth.signInWithPassword({ email, password });
-    if (error) {
-        alert("خطأ: " + error.message);
-        btn.innerText = "دخول النظام";
-        return;
-    }
-    await checkUser();
+    btn.innerText = "جاري الدخول...";
+    const { error } = await supa.auth.signInWithPassword({
+        email: document.getElementById("email").value,
+        password: document.getElementById("password").value
+    });
+    if (error) { alert("خطأ: " + error.message); btn.innerText = "دخول النظام"; }
+    else checkUser();
 };
 
 async function checkUser() {
     const { data: { session } } = await supa.auth.getSession();
     if (!session) return;
-
-    currentAdminEmail = session.user.email || "";
     currentAdminUserId = session.user.id;
-
     document.getElementById("loginCard").classList.add("hidden");
     document.getElementById("adminPanel").classList.remove("hidden");
 
     const { data: admin } = await supa.from("admins").select("full_name,is_super").eq("user_id", currentAdminUserId).maybeSingle();
-
-    currentAdminName = admin?.full_name || currentAdminEmail.split("@")[0];
+    currentAdminName = admin?.full_name || session.user.email.split("@")[0];
     isSuperAdmin = !!admin?.is_super;
 
     document.getElementById("whoami").innerHTML = `
-        <span class="text-blue-400 text-[10px] block font-black uppercase tracking-tighter">المشرف المسؤول</span>
-        <span class="text-white font-black text-lg">${currentAdminName}</span>
-        ${isSuperAdmin ? `<span class="bg-amber-500/10 text-amber-500 text-[9px] px-2 py-0.5 rounded mt-1 inline-block font-black">SUPER ADMIN</span>` : ""}
+        <div class="flex flex-col">
+            <span class="text-blue-400 text-[10px] font-black uppercase tracking-tighter">المشرف المسؤول</span>
+            <span class="text-white font-black text-lg">${currentAdminName} ${isSuperAdmin ? '👑' : ''}</span>
+        </div>
     `;
-    await loadData();
+    loadData();
 }
 
-// ================= DATA =================
+// ================= DATA & RENDER =================
 async function loadData() {
-    const { data, error } = await supa.from("resources").select("*").order("created_at", { ascending: false });
-    if (error) { alert("تعذر تحميل البيانات: " + error.message); return; }
+    const { data } = await supa.from("resources").select("*").order("created_at", { ascending: false });
     allRows = data || [];
     render();
 }
 
-// ================= RENDER =================
 function render() {
     const desktop = document.getElementById("desktopList");
     const mobile = document.getElementById("mobileList");
     const search = (document.getElementById("searchBox").value || "").toLowerCase();
 
-    // تحديث الإحصائيات
-    const todayStr = new Date().toLocaleDateString();
+    // إحصائيات الإنجاز
     const stats = {
-        today: allRows.filter(r => r.processed_by_user_id === currentAdminUserId && r.status === "approved" && r.updated_at && new Date(r.updated_at).toLocaleDateString() === todayStr).length,
-        total: allRows.filter(r => r.processed_by_user_id === currentAdminUserId && r.status === "approved").length,
+        today: allRows.filter(r => r.processed_by_user_id === currentAdminUserId && r.status === "approved").length,
         review: allRows.filter(r => r.processed_by_user_id === currentAdminUserId && r.status === "reviewing").length
     };
-
     document.getElementById("productivityStats").innerHTML = `
-        <div class="flex justify-around items-center h-full gap-2">
-            <div class="text-center flex-1"><p class="text-[9px] text-blue-400 font-bold">إنجاز اليوم</p><p class="text-xl font-black text-white">${stats.today}</p></div>
+        <div class="flex justify-around items-center h-full text-white">
+            <div class="text-center"><p class="text-[9px] text-blue-400 font-bold uppercase">إنجازك</p><p class="text-xl font-black">${stats.today}</p></div>
             <div class="w-px h-8 bg-slate-700"></div>
-            <div class="text-center flex-1"><p class="text-[9px] text-amber-500 font-bold">قيد المراجعة</p><p class="text-xl font-black text-white">${stats.review}</p></div>
-            <div class="w-px h-8 bg-slate-700"></div>
-            <div class="text-center flex-1"><p class="text-[9px] text-emerald-400 font-bold">الإجمالي</p><p class="text-xl font-black text-white">${stats.total}</p></div>
+            <div class="text-center"><p class="text-[9px] text-amber-500 font-bold uppercase">تحت المراجعة</p><p class="text-xl font-black">${stats.review}</p></div>
         </div>
     `;
 
     const filtered = allRows.filter(r => (currentFilter === "all" || r.status === currentFilter) && (r.subject || "").toLowerCase().includes(search));
 
-    const getBtns = (row) => {
+    const getActionBtns = (row) => {
         const isMe = row.processed_by_user_id === currentAdminUserId;
         const isFree = !row.processed_by_user_id;
-
-        let btns = `<a href="${row.file_url}" target="_blank" class="flex-1 bg-blue-600/20 text-blue-400 py-3 rounded-xl text-center text-[10px] font-black border border-blue-600/20 z-50">فتح</a>`;
+        let btns = `<a href="${row.file_url}" target="_blank" class="flex-1 bg-blue-600/20 text-blue-400 py-3 rounded-xl text-center text-[10px] font-black border border-blue-600/20 shadow-sm transition-all hover:bg-blue-600 hover:text-white">فتح</a>`;
 
         if ((isFree || isSuperAdmin) && row.status === "pending") {
-            btns += `<button onclick="claim(${row.id})" class="flex-[2] bg-amber-600 text-white py-3 rounded-xl text-[10px] font-black z-50">حجز للمراجعة ✋</button>`;
+            btns += `<button onclick="claim(${row.id})" class="flex-[2] bg-amber-600 text-white py-3 rounded-xl text-[10px] font-black shadow-lg shadow-amber-900/20">حجز للمراجعة</button>`;
         }
         if (isMe || isSuperAdmin) {
             if (row.status === "reviewing") {
-                btns += `<button onclick="updateStatus(${row.id}, 'approved')" class="flex-[2] bg-emerald-600 text-white py-3 rounded-xl text-[10px] font-black z-50">نشر ✅</button>`;
-                btns += `<button onclick="release(${row.id})" class="flex-1 bg-slate-800 text-slate-400 py-3 rounded-xl text-[10px] z-50">إلغاء</button>`;
+                btns += `<button onclick="updateStatus(${row.id}, 'approved')" class="flex-[2] bg-emerald-600 text-white py-3 rounded-xl text-[10px] font-black shadow-lg shadow-emerald-900/20 text-center">اعتماد ✅</button>`;
+                btns += `<button onclick="release(${row.id})" class="flex-1 bg-slate-800 text-slate-400 py-3 rounded-xl text-[10px] font-bold">إلغاء</button>`;
             } else if (row.status === "approved") {
-                btns += `<button onclick="updateStatus(${row.id}, 'pending')" class="flex-[2] bg-red-500/10 text-red-500 py-3 rounded-xl text-[10px] font-black z-50">سحب</button>`;
+                btns += `<button onclick="updateStatus(${row.id}, 'pending')" class="flex-[2] bg-red-500/10 text-red-500 py-3 rounded-xl text-[10px] font-black border border-red-500/10">سحب النشر</button>`;
             }
         } else if (!isFree && !isMe) {
-            btns = `<div class="w-full text-center py-3 bg-slate-900/80 rounded-xl border border-slate-800 text-[10px] text-slate-500 italic">🔒 عند: ${row.processed_by_name || 'مشرف آخر'}</div>`;
+            btns = `<div class="w-full text-center py-3 bg-slate-900/50 rounded-xl text-[10px] text-slate-500 italic border border-slate-800">🔒 محجوز لـ ${row.processed_by_name || 'مشرف آخر'}</div>`;
         }
         return btns;
     };
@@ -108,48 +92,39 @@ function render() {
     desktop.innerHTML = filtered.map(row => `
         <tr class="archive-item ${row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId && !isSuperAdmin ? "opacity-40" : ""}">
             <td class="p-4 rounded-r-2xl border-y border-r border-slate-800"><div class="font-black text-white text-sm">${row.subject || "--"}</div></td>
-            <td class="p-4 border-y border-slate-800"><textarea onchange="updateNote(${row.id}, this.value)" class="w-full h-12 p-3 text-[11px] bg-black/40 border border-slate-800 rounded-xl" ${row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId && !isSuperAdmin ? "disabled" : ""}>${row.admin_note || ""}</textarea></td>
-            <td class="p-4 border-y border-slate-800 text-center text-blue-400/50 font-black text-[10px] uppercase">${row.processed_by_name || "--"}</td>
-            <td class="p-4 rounded-l-2xl border-y border-l border-slate-800 min-w-[220px]"><div class="flex gap-2 relative z-50">${getBtns(row)}</div></td>
+            <td class="p-4 border-y border-slate-800"><textarea onchange="updateNote(${row.id}, this.value)" class="w-full h-12 p-3 text-[11px] bg-black/40 border border-slate-800 rounded-xl outline-none focus:border-blue-500 transition-all">${row.admin_note || ""}</textarea></td>
+            <td class="p-4 border-y border-slate-800 text-center text-blue-400/50 font-black text-[10px]">${row.processed_by_name || "--"}</td>
+            <td class="p-4 rounded-l-2xl border-y border-l border-slate-800 min-w-[220px]"><div class="flex gap-2">${getActionBtns(row)}</div></td>
         </tr>
     `).join("");
 
     mobile.innerHTML = filtered.map(row => `
-        <div class="archive-item p-5 rounded-[2.2rem] space-y-4 relative ${row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId && !isSuperAdmin ? "opacity-60 grayscale" : ""}">
+        <div class="archive-item p-5 rounded-[2.5rem] space-y-4 border border-slate-800 relative shadow-2xl">
             <div class="flex justify-between items-start">
-                <h3 class="font-black text-white text-lg flex-1 leading-tight">${row.subject || "--"}</h3>
-                <div class="text-left font-black text-[9px] text-blue-400 bg-blue-500/5 px-2 py-1 rounded-lg">${row.processed_by_name || "متاح للجميع"}</div>
+                <div class="flex flex-col"><span class="text-[9px] text-blue-500 font-black uppercase mb-1">${row.status}</span><h3 class="font-black text-white text-lg leading-tight">${row.subject || "--"}</h3></div>
+                <div class="bg-blue-500/10 px-3 py-1 rounded-full text-[9px] text-blue-400 font-bold">${row.processed_by_name || 'متاح'}</div>
             </div>
-            <textarea onchange="updateNote(${row.id}, this.value)" class="w-full p-4 text-[12px] h-24 bg-black/40 border border-slate-800 rounded-2xl outline-none focus:border-blue-500" placeholder="ملاحظة اللجنة..." ${row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId && !isSuperAdmin ? "disabled" : ""}>${row.admin_note || ""}</textarea>
-            <div class="flex gap-2 pt-2 relative z-50">${getBtns(row)}</div>
+            <textarea onchange="updateNote(${row.id}, this.value)" class="w-full p-4 text-[12px] h-24 bg-black/40 border border-slate-800 rounded-[1.5rem] focus:border-blue-500 outline-none" placeholder="ملاحظة المراجعة...">${row.admin_note || ""}</textarea>
+            <div class="flex gap-2 pt-2">${getActionBtns(row)}</div>
         </div>
     `).join("");
-    
     document.getElementById("totalCount").textContent = allRows.length;
 }
 
 // ================= ACTIONS =================
 window.claim = async (id) => {
-    const payload = { 
+    const { error } = await supa.from("resources").update({ 
         status: 'reviewing', 
         processed_by_user_id: currentAdminUserId, 
-        processed_by_name: currentAdminName,
-        updated_at: new Date().toISOString()
-    };
-    const { error } = await supa.from("resources").update(payload).eq("id", id);
-    if (error) alert("فشل الحجز: " + error.message);
-    else await loadData();
+        processed_by_name: currentAdminName 
+    }).eq("id", id);
+    if (error) alert("فشل الحجز: تأكد من وجود كولوم processed_by_user_id");
+    else loadData();
 };
 
 window.updateStatus = async (id, s) => {
-    const { error } = await supa.from("resources").update({ 
-        status: s, 
-        processed_by_user_id: currentAdminUserId, 
-        processed_by_name: currentAdminName,
-        updated_at: new Date().toISOString() 
-    }).eq("id", id);
-    if (error) alert("فشل التحديث: " + error.message);
-    else await loadData();
+    await supa.from("resources").update({ status: s, updated_at: new Date().toISOString() }).eq("id", id);
+    loadData();
 };
 
 window.updateNote = async (id, n) => {
@@ -158,10 +133,9 @@ window.updateNote = async (id, n) => {
 
 window.release = async (id) => {
     await supa.from("resources").update({ processed_by_user_id: null, processed_by_name: null, status: "pending" }).eq("id", id);
-    await loadData();
+    loadData();
 };
 
-// تشغيل الفلاتر
 document.querySelectorAll(".filterBtn").forEach(b => b.onclick = () => {
     currentFilter = b.dataset.filter;
     document.querySelectorAll(".filterBtn").forEach(x => x.classList.remove("bg-blue-600", "text-white"));
