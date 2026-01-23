@@ -1,4 +1,4 @@
-// admin.js - النسخة النهائية المحدثة
+// admin.js - النسخة المتوافقة مع بنية جدولك الحالية
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -29,17 +29,12 @@ if (loginForm) {
     loginForm.onsubmit = async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector("button");
-        const spinner = document.getElementById("loginSpinner");
-        
         try {
             btn.disabled = true;
-            if (spinner) spinner.classList.remove("hidden");
-            
             const { error } = await supa.auth.signInWithPassword({
                 email: document.getElementById("email").value,
                 password: document.getElementById("password").value
             });
-
             if (error) throw error;
             showToast("تم تسجيل الدخول بنجاح", "success");
             checkUser();
@@ -47,7 +42,6 @@ if (loginForm) {
             showToast("فشل الدخول: " + err.message, 'error');
         } finally {
             btn.disabled = false;
-            if (spinner) spinner.classList.add("hidden");
         }
     };
 }
@@ -55,30 +49,16 @@ if (loginForm) {
 async function checkUser() {
     const { data: { session } } = await supa.auth.getSession();
     if (!session) return;
-
     currentUser = session.user;
     document.getElementById("loginCard")?.classList.add("hidden");
     document.getElementById("adminPanel")?.classList.remove("hidden");
-
-    try {
-        const { data: admin } = await supa.from("admins").select("*").eq("user_id", currentUser.id).maybeSingle();
-        const whoami = document.getElementById("whoami");
-        if (whoami) {
-            whoami.innerHTML = `
-                <p class="text-[10px] font-black text-blue-400 uppercase tracking-widest">المشرف الحالي</p>
-                <p class="text-xl font-black text-white">${admin?.full_name || currentUser.email.split('@')[0]}</p>
-            `;
-        }
-        loadData();
-    } catch (err) {
-        console.error("Error fetching admin data:", err);
-    }
+    loadData();
 }
 
 // ================= معالجة البيانات =================
 async function loadData() {
     try {
-        const { data, error } = await supa.from("resources").select("*").order("created_at", { ascending: false });
+        const { data, error } = await supa.from("resources").select("*").order("id", { ascending: false });
         if (error) throw error;
         allRows = data || [];
         render();
@@ -87,26 +67,10 @@ async function loadData() {
     }
 }
 
-function render() {
-    const searchBox = document.getElementById("searchBox");
-    const search = searchBox ? searchBox.value.toLowerCase() : "";
-    const filtered = allRows.filter(r => (currentFilter === "all" || r.status === currentFilter) && (r.subject || "").toLowerCase().includes(search));
-    
-    if (document.getElementById("totalCount")) document.getElementById("totalCount").textContent = filtered.length;
-    
-    renderStats();
-    
-    const desktop = document.getElementById("desktopList");
-    const mobile = document.getElementById("mobileList");
-
-    if (desktop) desktop.innerHTML = filtered.map(row => createRowHTML(row, 'desktop')).join("");
-    if (mobile) mobile.innerHTML = filtered.map(row => createRowHTML(row, 'mobile')).join("");
-}
-
-// الدوال العالمية (جعلناها Global لتعمل مع onclick)
+// دالة التحديث المعدلة لتناسب أعمدة جدولك
 window.updateAction = async function(e, id, type) {
-    // نمرر الـ event يدوياً لضمان الوصول للزر
-    const btn = e.currentTarget; 
+    if (e) e.preventDefault();
+    const btn = e.currentTarget;
     const originalHTML = btn.innerHTML;
     
     try {
@@ -115,34 +79,37 @@ window.updateAction = async function(e, id, type) {
 
         let updates = {};
         if (type === 'claim') {
-            updates = { status: 'reviewing', processed_by_user_id: currentUser.id, processed_by_name: currentUser.email.split('@')[0] };
+            updates = { 
+                status: 'reviewing', 
+                processed_by_user_id: currentUser.id, 
+                processed_by_name: currentUser.email.split('@')[0] 
+            };
         } else if (type === 'approve') {
-            updates = { status: 'approved', updated_at: new Date().toISOString() };
+            updates = { status: 'approved' }; // تم إزالة updated_at لأنها غير موجودة في جدولك
         } else if (type === 'release') {
-            updates = { status: 'pending', processed_by_user_id: null, processed_by_name: null };
+            updates = { 
+                status: 'pending', 
+                processed_by_user_id: null, 
+                processed_by_name: null 
+            };
         }
 
-        // استخدام select لتجاوز بعض مشاكل الـ CORS في المتصفحات
-        const { error } = await supa.from("resources").update(updates).eq("id", id).select();
+        // استخدام .select() ضروري لتجاوز قيود CORS (PATCH) في المتصفح
+        const { error } = await supa.from("resources")
+            .update(updates)
+            .eq("id", id)
+            .select();
+
         if (error) throw error;
 
         showToast("تمت العملية بنجاح", 'success');
-        await loadData(); // تحديث فوري للواجهة
+        await loadData(); 
     } catch (err) {
+        console.error("Technical Error:", err);
         showToast("فشل: " + err.message, 'error');
         btn.innerHTML = originalHTML;
     } finally {
         btn.disabled = false;
-    }
-};
-
-window.updateNote = async function(id, note) {
-    try {
-        const { error } = await supa.from("resources").update({ admin_note: note }).eq("id", id).select();
-        if (error) throw error;
-        showToast("تم حفظ الملاحظة", 'info');
-    } catch (err) {
-        showToast("لم يتم الحفظ", 'error');
     }
 };
 
@@ -163,15 +130,15 @@ function createRowHTML(row, type) {
 
     if (type === 'desktop') {
         return `
-            <tr class="bg-slate-900/40 border border-white/5 backdrop-blur-sm transition-all hover:bg-slate-800/50">
-                <td class="p-4 rounded-r-2xl font-bold">${row.subject || 'بدون عنوان'}</td>
+            <tr class="bg-slate-900/40 border border-white/5 backdrop-blur-sm hover:bg-slate-800/50">
+                <td class="p-4 font-bold text-sm text-white">${row.subject || 'بدون عنوان'}</td>
                 <td class="p-4">
                     <input type="text" value="${row.admin_note || ''}" 
                         onblur="updateNote(${row.id}, this.value)"
                         class="bg-black/20 border border-transparent focus:border-blue-500/50 w-full p-2 rounded-lg text-xs outline-none transition-all">
                 </td>
-                <td class="p-4 text-center text-xs text-blue-400/70 font-bold">${row.processed_by_name || '—'}</td>
-                <td class="p-4 rounded-l-2xl">${actionButtons}</td>
+                <td class="p-4 text-center text-xs text-blue-400 font-bold">${row.processed_by_name || '—'}</td>
+                <td class="p-4">${actionButtons}</td>
             </tr>
         `;
     }
@@ -188,35 +155,52 @@ function createRowHTML(row, type) {
     `;
 }
 
-// ... (بقية الدوال renderStats و Filter و Logout كما هي) ...
+// بقية الدوال
+function render() {
+    const search = document.getElementById("searchBox")?.value.toLowerCase() || "";
+    const filtered = allRows.filter(r => (currentFilter === "all" || r.status === currentFilter) && (r.subject || "").toLowerCase().includes(search));
+    
+    document.getElementById("totalCount").textContent = filtered.length;
+    renderStats();
+    
+    document.getElementById("desktopList").innerHTML = filtered.map(row => createRowHTML(row, 'desktop')).join("");
+    document.getElementById("mobileList").innerHTML = filtered.map(row => createRowHTML(row, 'mobile')).join("");
+}
+
+window.updateNote = async function(id, note) {
+    try {
+        await supa.from("resources").update({ admin_note: note }).eq("id", id).select();
+        showToast("تم حفظ الملاحظة", 'info');
+    } catch (err) { showToast("لم يتم الحفظ", 'error'); }
+};
+
 function renderStats() {
     if (!currentUser) return;
-    const statsDiv = document.getElementById("productivityStats");
-    if (!statsDiv) return;
-
     const stats = {
         done: allRows.filter(r => r.processed_by_user_id === currentUser.id && r.status === 'approved').length,
         active: allRows.filter(r => r.processed_by_user_id === currentUser.id && r.status === 'reviewing').length
     };
-    statsDiv.innerHTML = `
-        <div class="text-center"><p class="text-[9px] text-slate-500 font-bold uppercase">منجز</p><p class="text-xl font-black text-emerald-400">${stats.done}</p></div>
-        <div class="w-px h-6 bg-white/10"></div>
-        <div class="text-center"><p class="text-[9px] text-slate-500 font-bold uppercase">قيد المراجعة</p><p class="text-xl font-black text-amber-400">${stats.active}</p></div>
-    `;
+    const statsDiv = document.getElementById("productivityStats");
+    if (statsDiv) {
+        statsDiv.innerHTML = `
+            <div class="text-center"><p class="text-[9px] text-slate-500 uppercase">منجز</p><p class="text-xl font-black text-emerald-400">${stats.done}</p></div>
+            <div class="w-px h-6 bg-white/10 mx-4"></div>
+            <div class="text-center"><p class="text-[9px] text-slate-500 uppercase">قيد المراجعة</p><p class="text-xl font-black text-amber-400">${stats.active}</p></div>
+        `;
+    }
 }
 
 document.querySelectorAll(".filterBtn").forEach(btn => {
     btn.onclick = () => {
         currentFilter = btn.dataset.filter;
-        document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("bg-blue-600", "shadow-lg", "text-white"));
-        btn.classList.add("bg-blue-600", "shadow-lg", "text-white");
+        document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("bg-blue-600", "text-white"));
+        btn.classList.add("bg-blue-600", "text-white");
         render();
     };
 });
 
-window.handleLogout = async () => {
-    await supa.auth.signOut();
-    location.reload();
-};
+const sBox = document.getElementById("searchBox");
+if (sBox) sBox.addEventListener("input", render);
 
+window.handleLogout = async () => { await supa.auth.signOut(); location.reload(); };
 checkUser();
