@@ -1,5 +1,5 @@
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_KEY_HERE"; // يفضل وضعها في متغير بيئة
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";يفضل وضعها في متغير بيئة
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let allRows = [];
