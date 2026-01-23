@@ -1,78 +1,122 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إدارة الموارد | EE Admin</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Cairo', sans-serif; background: #060714; color: #fff; min-height: 100vh; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .status-pending { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
-        .status-approved { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-        .btn-brand { background: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%); }
-        input { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; outline: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة الأدمن</title>
+
+  <meta name="robots" content="noindex,nofollow">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root{
+      --bg0:#060714; --bg1:#0B1026;
+      --stroke: rgba(255,255,255,.10);
+      --text: rgba(255,255,255,.92);
+    }
+    body{
+      font-family: Cairo, system-ui;
+      background:
+        radial-gradient(900px 380px at 20% 10%, rgba(79,70,229,.20), transparent 60%),
+        radial-gradient(800px 340px at 80% 25%, rgba(6,182,212,.14), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .glass{ background: rgba(15,23,42,.72); backdrop-filter: blur(10px); border: 1px solid var(--stroke); }
+    .btn-brand{
+      background: linear-gradient(135deg,#4F46E5 0%,#06B6D4 100%);
+      transition: transform .18s ease, filter .18s ease;
+    }
+    .btn-brand:hover{ transform: translateY(-1px); filter: brightness(1.03); }
+    .btn-ghost{ border: 1px solid var(--stroke); background: rgba(255,255,255,0.02); }
+    .btn-ghost:hover{ background: rgba(255,255,255,0.06); }
+    input{
+      width:100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+      outline: none;
+    }
+  </style>
 </head>
-<body class="p-4 md:p-8">
 
-    <div class="max-w-6xl mx-auto">
-        <div class="glass rounded-3xl p-6 mb-8 flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">لوحة الإدارة</h1>
-                <p id="whoami" class="text-[10px] text-white/40 mt-1 font-bold italic uppercase tracking-widest">Checking access...</p>
-            </div>
-            <button id="logoutBtn" class="hidden glass px-4 py-2 rounded-xl text-xs font-bold text-red-400 border-red-500/20 hover:bg-red-500/10">تسجيل خروج</button>
-        </div>
+<body class="p-4 sm:p-8">
+  <div class="max-w-5xl mx-auto">
 
-        <div id="loginCard" class="hidden glass rounded-[2.5rem] p-8 max-w-md mx-auto mt-20 text-center">
-            <h2 class="text-xl font-bold mb-6">دخول المسؤولين</h2>
-            <form id="loginForm" class="space-y-4 text-right">
-                <div>
-                    <label class="text-xs text-white/40 block mb-2 mr-2">البريد الإلكتروني</label>
-                    <input id="email" type="email" placeholder="example@mail.com" class="w-full p-4 rounded-2xl" required>
-                </div>
-                <div>
-                    <label class="text-xs text-white/40 block mb-2 mr-2">كلمة المرور</label>
-                    <input id="password" type="password" placeholder="••••••••" class="w-full p-4 rounded-2xl" required>
-                </div>
-                <button type="submit" class="btn-brand w-full py-4 rounded-2xl font-black text-lg shadow-lg shadow-indigo-500/20 mt-4">دخول</button>
-            </form>
-            <p id="loginMsg" class="mt-4 text-sm text-amber-300"></p>
-        </div>
-
-        <div id="adminPanel" class="hidden space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="glass p-6 rounded-3xl">
-                    <div class="text-[10px] uppercase font-bold opacity-30 mb-1">إجمالي الملفات</div>
-                    <div id="totalCount" class="text-3xl font-black">0</div>
-                </div>
-                <div class="glass p-6 rounded-3xl border-amber-500/20">
-                    <div class="text-[10px] uppercase font-bold text-amber-500/50 mb-1">بانتظار المراجعة</div>
-                    <div id="pendingCount" class="text-3xl font-black text-amber-500">0</div>
-                </div>
-                <div class="glass p-6 rounded-3xl border-emerald-500/20">
-                    <div class="text-[10px] uppercase font-bold text-emerald-500/50 mb-1">تم اعتمادها</div>
-                    <div id="approvedCount" class="text-3xl font-black text-emerald-500">0</div>
-                </div>
-            </div>
-
-            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div class="flex glass p-1 rounded-2xl gap-1">
-                    <button onclick="setFilter('pending')" class="filter-btn px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all" id="btn-pending">Pending</button>
-                    <button onclick="setFilter('approved')" class="filter-btn px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all" id="btn-approved">Approved</button>
-                    <button onclick="setFilter('all')" class="filter-btn px-6 py-2 rounded-xl text-[10px] font-black uppercase transition-all" id="btn-all">All</button>
-                </div>
-                <input type="text" id="searchBox" placeholder="بحث باسم المادة..." class="w-full md:w-80 p-3 rounded-xl text-sm">
-            </div>
-
-            <div id="listBox" class="grid gap-4">
-                </div>
-        </div>
+    <!-- HEADER -->
+    <div class="glass rounded-3xl p-5 sm:p-6 mb-6 flex items-center justify-between">
+      <div class="text-right">
+        <div class="text-2xl font-black">لوحة الأدمن</div>
+        <div class="text-[12px] text-white/45">EE Resources Moderation</div>
+      </div>
+      <div class="flex gap-2">
+        <button id="hardRefreshHint" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">
+          إذا ما يحدث: Ctrl+Shift+R
+        </button>
+      </div>
     </div>
 
-    <script src="admin.js"></script>
+    <!-- LOGIN CARD -->
+    <div id="loginCard" class="glass rounded-3xl p-6 sm:p-8">
+      <div class="flex items-center justify-between gap-3 mb-6">
+        <div class="text-right">
+          <h1 class="text-xl sm:text-2xl font-black">تسجيل دخول الأدمن</h1>
+          <p class="text-[12px] text-white/45 mt-1">بريد + كلمة مرور (Supabase Auth)</p>
+        </div>
+        <button id="refreshBtn" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">تحديث</button>
+      </div>
+
+      <form id="loginForm" class="space-y-3">
+        <input id="email" type="email" autocomplete="username" placeholder="Email" required />
+        <input id="password" type="password" autocomplete="current-password" placeholder="Password" required />
+        <button id="loginBtn" type="submit" class="btn-brand w-full py-3 rounded-2xl font-black">
+          دخول
+        </button>
+      </form>
+
+      <div id="loginMsg" class="hidden mt-4 text-sm text-amber-200/90"></div>
+      <div id="debugBox" class="mt-4 text-[12px] text-white/35"></div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="adminPanel" class="hidden glass rounded-3xl p-6 sm:p-8 mt-6">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div class="text-right">
+          <h2 class="text-xl font-black">إدارة الملفات</h2>
+          <p id="whoami" class="text-[12px] text-white/45 mt-1"></p>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="refreshBtn2" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">تحديث</button>
+          <button id="logoutBtn" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">تسجيل خروج</button>
+        </div>
+      </div>
+
+      <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between mb-4">
+        <div class="flex flex-wrap gap-2">
+          <button class="filterBtn btn-ghost px-4 py-2 rounded-xl text-xs font-black" data-filter="pending">Pending</button>
+          <button class="filterBtn btn-ghost px-4 py-2 rounded-xl text-xs font-black" data-filter="approved">Approved</button>
+          <button class="filterBtn btn-ghost px-4 py-2 rounded-xl text-xs font-black" data-filter="all">All</button>
+          <span class="text-[12px] text-white/45 self-center">العدد: <b id="countBadge">0</b></span>
+        </div>
+
+        <input id="searchBox" placeholder="بحث باسم المادة..." class="md:w-72" />
+      </div>
+
+      <div id="panelMsg" class="hidden mb-4 text-sm text-amber-200/90"></div>
+
+      <div id="emptyBox" class="hidden text-center text-sm text-white/40 py-10">لا توجد عناصر</div>
+      <div id="listBox" class="space-y-3"></div>
+    </div>
+
+  </div>
+
+  <!-- مهم: لازم يكون RELATIVE لأن الصفحة داخل /V1/ -->
+  <script src="assets/js/admin.js?v=9999"></script>
 </body>
 </html>
