@@ -6,8 +6,6 @@ const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
 
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// لازم يكون اسم الـ Bucket مطابق تماماً في Supabase Storage
 const BUCKET = "ee-resources";
 
 // ===============================
@@ -32,10 +30,9 @@ function setSubmitLoading(isLoading) {
 }
 
 // ===============================
-// 3) سايدبار + مودال + ربط الأحداث
+// 3) UI وربط الأحداث بعد تحميل الصفحة
 // ===============================
 document.addEventListener("DOMContentLoaded", () => {
-  // عناصر أساسية
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("overlay");
 
@@ -51,7 +48,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const successUi = document.getElementById("successUi");
   const form = document.getElementById("eeSourceForm");
 
-  // ===== Sidebar =====
   function openSidebar() {
     if (!sidebar || !overlay) return;
     sidebar.classList.remove("translate-x-full");
@@ -66,10 +62,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.style.overflow = "auto";
   }
 
-  if (openSidebarBtn) openSidebarBtn.addEventListener("click", openSidebar);
-  if (closeSidebarBtn) closeSidebarBtn.addEventListener("click", closeSidebar);
-
-  // ===== Modal =====
   function openUploadModal() {
     if (!uploadModal) return;
     uploadModal.classList.remove("hidden");
@@ -88,6 +80,9 @@ document.addEventListener("DOMContentLoaded", () => {
     if (form) form.reset();
     setSubmitLoading(false);
   }
+
+  if (openSidebarBtn) openSidebarBtn.addEventListener("click", openSidebar);
+  if (closeSidebarBtn) closeSidebarBtn.addEventListener("click", closeSidebar);
 
   if (openUploadBtn) openUploadBtn.addEventListener("click", openUploadModal);
   if (closeUploadBtn) closeUploadBtn.addEventListener("click", closeUploadModal);
@@ -108,7 +103,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ===============================
-  // 4) إرسال النموذج: رفع PDF + إدخال DB
+  // 4) رفع PDF + تسجيل pending في DB
   // ===============================
   if (form) {
     form.addEventListener("submit", async (e) => {
@@ -123,18 +118,15 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!subject) { setSubmitLoading(false); return alert("فضلاً اكتب اسم المادة"); }
       if (!file)    { setSubmitLoading(false); return alert("فضلاً اختر ملفاً"); }
 
-      // تجربة أولى: PDF فقط
       if (file.type !== "application/pdf") {
         setSubmitLoading(false);
         return alert("حالياً للتجربة: ارفع PDF فقط.");
       }
 
       try {
-        // اسم ملف آمن
         const safeName = file.name.replace(/[^\w.\-]+/g, "_");
         const path = `pending/${Date.now()}_${safeName}`;
 
-        // 1) رفع الملف في Storage
         const { error: uploadError } = await supa
           .storage
           .from(BUCKET)
@@ -142,19 +134,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (uploadError) throw uploadError;
 
-        // 2) رابط عام (يتطلب أن البكت Public)
         const { data: publicData } = supa
           .storage
           .from(BUCKET)
           .getPublicUrl(path);
 
         const fileUrl = publicData?.publicUrl;
+        if (!fileUrl) throw new Error("لم يتم إنشاء رابط عام. تأكد أن Bucket Public أو أن سياسات القراءة موجودة.");
 
-        if (!fileUrl) {
-          throw new Error("لم يتم إنشاء رابط عام للملف. تأكد أن الـ Bucket Public.");
-        }
-
-        // 3) إدخال سجل في جدول resources بحالة pending
         const { error: insertError } = await supa
           .from("resources")
           .insert([{
@@ -167,7 +154,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (insertError) throw insertError;
 
-        // نجاح
         if (formContent) formContent.classList.add("hidden");
         if (successUi) successUi.classList.remove("hidden");
         form.reset();
@@ -176,31 +162,17 @@ document.addEventListener("DOMContentLoaded", () => {
       } catch (err) {
         console.error(err);
         setSubmitLoading(false);
-
-        // رسائل أوضح حسب نوع الخطأ
-        const msg = String(err?.message || err || "");
-        if (msg.includes("row-level security") || msg.includes("RLS") || msg.includes("permission")) {
-          alert("رفض صلاحيات (RLS). تأكد من سياسات INSERT و SELECT على جدول resources.");
-        } else if (msg.toLowerCase().includes("bucket") || msg.toLowerCase().includes("not found")) {
-          alert("تأكد من وجود Bucket باسم ee-resources في Storage.");
-        } else if (msg.includes("Public")) {
-          alert("تأكد أن Bucket ee-resources مضبوط على Public أو عدّل الكود لاستخدام Signed URLs.");
-        } else {
-          alert("صار خطأ أثناء الرفع/الإرسال. راجع Console للتفاصيل.");
-        }
+        alert("صار خطأ أثناء الرفع/الإرسال. راجع Console للتفاصيل.");
       }
     });
   }
 
   // ===============================
-  // 5) تحميل وعرض المصادر المعتمدة
+  // 5) تحميل المعتمد فقط
   // ===============================
   loadApprovedResources();
 });
 
-// ===============================
-// 6) تحميل الموارد المعتمدة من Supabase
-// ===============================
 async function loadApprovedResources() {
   const box = document.getElementById("approvedResources");
   if (!box) return;
