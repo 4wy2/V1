@@ -20,43 +20,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-  <style>
-    :root{
-      --bg0:#060714; --bg1:#0B1026; --stroke: rgba(255,255,255,.08);
-      --brand:#4F46E5; --brand2:#06B6D4; --text: rgba(255,255,255,.92);
-    }
-    body{
-      font-family:'Cairo', sans-serif;
-      background:
-        radial-gradient(900px 380px at 20% 10%, rgba(79,70,229,.25), transparent 60%),
-        radial-gradient(800px 340px at 80% 25%, rgba(6,182,212,.18), transparent 55%),
-        linear-gradient(180deg, var(--bg0), var(--bg1));
-      color: var(--text);
-      min-height: 100vh;
-    }
-    .glass{ background: rgba(15,23,42,.72); backdrop-filter: blur(10px); border: 1px solid var(--stroke); }
-    .btn-brand{
-      background: linear-gradient(135deg, rgba(79,70,229,1) 0%, rgba(6,182,212,1) 100%);
-      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
-    }
-    .btn-brand:hover{ transform: translateY(-2px); box-shadow: 0 18px 40px rgba(79,70,229,.22); filter: brightness(1.02); }
-    .btn-ghost{ border: 1px solid var(--stroke); background: rgba(255,255,255,0.02); transition: background .18s ease, transform .18s ease; }
-    .btn-ghost:hover{ background: rgba(255,255,255,0.06); transform: translateY(-1px); }
-    .no-scroll{ overflow:hidden; }
-
-    @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    .animate-scale { animation: scaleIn 0.3s ease-out forwards; }
-
-    .disclaimer {
-      margin-top: 28px;
-      padding: 10px 14px;
-      font-size: 12px;
-      color: rgba(255,255,255,0.35);
-      background: rgba(255,255,255,0.04);
-      border-radius: 10px;
-      text-align: center;
-    }
-  </style>
+  <!-- CSS الخارجي -->
+  <link rel="stylesheet" href="assets/css/main.css">
 </head>
 
 <body class="flex flex-col overflow-x-hidden">
@@ -206,7 +171,7 @@
           <h3 class="text-xl md:text-2xl font-black mb-2">شاركنا مصادرك الدراسية</h3>
           <p class="text-xs text-white/50 mb-6">ساهم في إثراء المحتوى لزملائك المهندسين، ارفع ملفاتك الآن.</p>
           <div class="flex justify-center">
-            <button onclick="openUploadModal()" class="btn-ghost rounded-2xl py-4 px-10 flex items-center gap-4 group transition-all hover:border-indigo-500/40">
+            <button id="openUploadBtn" class="btn-ghost rounded-2xl py-4 px-10 flex items-center gap-4 group transition-all hover:border-indigo-500/40">
               <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition">
                 <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
               </div>
@@ -229,7 +194,6 @@
           <span class="text-[9px] bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/20 font-bold">تحديث مستمر</span>
         </div>
 
-        <!-- (اختياري) العناصر Soon القديمة - تركتها كما هي -->
         <div class="grid grid-cols-2 gap-3">
           <div class="btn-ghost rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between opacity-50 cursor-not-allowed border-dashed gap-2 text-center sm:text-right">
             <span class="font-extrabold text-[12px] sm:text-sm text-white/40">
@@ -334,7 +298,7 @@
   <!-- Upload Modal -->
   <div id="uploadModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-md">
     <div class="glass w-full max-w-lg rounded-[2.5rem] p-8 relative shadow-2xl">
-      <button onclick="closeUploadModal()" class="absolute top-6 left-6 text-white/40 hover:text-white transition">
+      <button id="closeUploadBtn" class="absolute top-6 left-6 text-white/40 hover:text-white transition" aria-label="إغلاق">
         <i class="fa-solid fa-xmark text-xl"></i>
       </button>
 
@@ -344,7 +308,6 @@
           <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Submit Your Resources</p>
         </div>
 
-        <!-- الفورم: بدون Netlify -->
         <form enctype="multipart/form-data" id="eeSourceForm" class="space-y-4 text-right">
           <input type="text" name="subject" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder="اسم المادة">
           <input type="text" name="note" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder="رابط خارجي أو ملاحظة">
@@ -362,7 +325,7 @@
         <i class="fa-solid fa-circle-check text-5xl text-green-500 mb-4"></i>
         <h3 class="text-xl font-black">تم الاستلام بنجاح!</h3>
         <p class="text-sm text-white/40 mt-3 px-10">شكراً لمساهمتك القيمة يا مهندس.</p>
-        <button onclick="closeUploadModal()" class="mt-8 text-indigo-400 underline text-xs">إغلاق</button>
+        <button id="closeSuccessBtn" class="mt-8 text-indigo-400 underline text-xs">إغلاق</button>
       </div>
     </div>
   </div>
@@ -401,197 +364,7 @@
     </div>
   </footer>
 
-  <script>
-    // ===============================
-    // 1) إعداد Supabase
-    // ===============================
-    // ضع قيمك هنا كما هي (بدون ما تغيّر بقية الكود)
-    const SUPABASE_URL = "PASTE_YOUR_SUPABASE_PROJECT_URL_HERE";
-    const SUPABASE_ANON_KEY = "PASTE_YOUR_SUPABASE_ANON_PUBLIC_KEY_HERE";
-    const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-    const BUCKET = "ee-resources";
-
-    // ===============================
-    // 2) التحكم بالسايدبار
-    // ===============================
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('overlay');
-
-    function openSidebar(){
-      sidebar.classList.remove('translate-x-full');
-      overlay.classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
-    }
-    function closeSidebar(){
-      sidebar.classList.add('translate-x-full');
-      overlay.classList.add('hidden');
-      document.body.style.overflow = 'auto';
-    }
-
-    document.getElementById('openSidebar').onclick = openSidebar;
-    document.getElementById('closeSidebar').onclick = closeSidebar;
-    overlay.onclick = () => { closeSidebar(); closeUploadModal(); };
-
-    // ===============================
-    // 3) التحكم بالمودال
-    // ===============================
-    const uploadModal = document.getElementById('uploadModal');
-
-    function openUploadModal() {
-      uploadModal.classList.remove('hidden');
-      uploadModal.classList.add('flex');
-      document.body.style.overflow = 'hidden';
-    }
-
-    function closeUploadModal() {
-      uploadModal.classList.add('hidden');
-      uploadModal.classList.remove('flex');
-      document.body.style.overflow = 'auto';
-      document.getElementById("formContent").classList.remove("hidden");
-      document.getElementById("successUi").classList.add("hidden");
-      const form = document.getElementById("eeSourceForm");
-      if (form) form.reset();
-      setSubmitLoading(false);
-    }
-
-    document.onkeydown = (e) => {
-      if (e.key === 'Escape') {
-        closeSidebar();
-        closeUploadModal();
-      }
-    };
-
-    // ===============================
-    // 4) أدوات مساعدة
-    // ===============================
-    function escapeHtml(str) {
-      return String(str).replace(/[&<>"']/g, s => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
-      }[s]));
-    }
-
-    function setSubmitLoading(isLoading) {
-      const btn = document.getElementById("submitBtn");
-      if (!btn) return;
-      btn.disabled = isLoading;
-      btn.style.opacity = isLoading ? "0.7" : "1";
-      btn.textContent = isLoading ? "جارٍ الإرسال..." : "إرسال للمراجعة";
-    }
-
-    // ===============================
-    // 5) إرسال النموذج: رفع ملف + إدخال DB
-    // ===============================
-    document.getElementById("eeSourceForm").onsubmit = async function(e) {
-      e.preventDefault();
-      setSubmitLoading(true);
-
-      const form = this;
-      const subject = form.querySelector('input[name="subject"]').value.trim();
-      const note = form.querySelector('input[name="note"]').value.trim();
-      const fileInput = form.querySelector('input[name="file"]');
-      const file = fileInput.files && fileInput.files[0];
-
-      if (!subject) { setSubmitLoading(false); return alert("فضلاً اكتب اسم المادة"); }
-      if (!file)    { setSubmitLoading(false); return alert("فضلاً اختر ملفاً"); }
-
-      // تجربة أولى: PDF فقط
-      if (file.type !== "application/pdf") {
-        setSubmitLoading(false);
-        return alert("حالياً للتجربة: ارفع PDF فقط.");
-      }
-
-      try {
-        // اسم ملف آمن
-        const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-        const path = `pending/${Date.now()}_${safeName}`;
-
-        // 1) رفع الملف في Storage
-        const { error: uploadError } = await supa
-          .storage
-          .from(BUCKET)
-          .upload(path, file, { upsert: false });
-
-        if (uploadError) throw uploadError;
-
-        // 2) رابط عام (يتطلب أن البكت Public)
-        const { data: publicData } = supa
-          .storage
-          .from(BUCKET)
-          .getPublicUrl(path);
-
-        const fileUrl = publicData.publicUrl;
-
-        // 3) إدخال سجل في جدول resources بحالة pending
-        const { error: insertError } = await supa
-          .from("resources")
-          .insert([{
-            subject,
-            note: note || null,
-            file_path: path,
-            file_url: fileUrl,
-            status: "pending"
-          }]);
-
-        if (insertError) throw insertError;
-
-        // نجاح
-        document.getElementById("formContent").classList.add("hidden");
-        document.getElementById("successUi").classList.remove("hidden");
-        form.reset();
-        setSubmitLoading(false);
-
-      } catch (err) {
-        console.error(err);
-        setSubmitLoading(false);
-        alert("صار خطأ أثناء الرفع/الإرسال. تأكد من سياسات RLS واسم البكت ee-resources.");
-      }
-    };
-
-    // ===============================
-    // 6) تحميل وعرض المصادر المعتمدة
-    // ===============================
-    async function loadApprovedResources() {
-      const box = document.getElementById("approvedResources");
-      if (!box) return;
-
-      box.innerHTML = '<div class="text-center text-[10px] text-white/30">جاري تحميل المصادر...</div>';
-
-      const { data, error } = await supa
-        .from("resources")
-        .select("id, subject, note, file_url, created_at")
-        .eq("status", "approved")
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (error) {
-        console.error(error);
-        box.innerHTML = '<div class="text-center text-[10px] text-red-300/70">تعذر تحميل المصادر</div>';
-        return;
-      }
-
-      if (!data || data.length === 0) {
-        box.innerHTML = '<div class="text-center text-[10px] text-white/25">لا توجد مصادر معتمدة حالياً</div>';
-        return;
-      }
-
-      box.innerHTML = data.map(item => `
-        <div class="btn-ghost rounded-2xl p-4 flex items-center justify-between gap-3">
-          <div class="text-right">
-            <div class="font-black text-sm text-white/80">${escapeHtml(item.subject)}</div>
-            ${item.note ? `<div class="text-[10px] text-white/35 mt-1">${escapeHtml(item.note)}</div>` : ""}
-          </div>
-          <a class="btn-brand px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap"
-            href="${item.file_url}" target="_blank" rel="noopener noreferrer">
-            تحميل
-          </a>
-        </div>
-      `).join("");
-    }
-
-    // تشغيل عند فتح الصفحة
-    loadApprovedResources();
-  </script>
-
+  <!-- JS الخارجي -->
+  <script src="assets/js/app.js"></script>
 </body>
 </html>
