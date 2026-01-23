@@ -1,5 +1,4 @@
-// admin.js
-
+// admin.js - النسخة المصححة والمحدثة 2026
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -108,11 +107,46 @@ function render() {
     if (mobile) mobile.innerHTML = filtered.map(row => createRowHTML(row, 'mobile')).join("");
 }
 
-// تفعيل البحث المباشر
-const searchInput = document.getElementById("searchBox");
-if (searchInput) {
-    searchInput.addEventListener("input", render);
-}
+// جعل الدوال متاحة للمتصفح (Global Scope)
+window.updateAction = async function(event, id, type) {
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    
+    try {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="animate-pulse">جاري...</span>`;
+
+        let updates = {};
+        if (type === 'claim') {
+            updates = { status: 'reviewing', processed_by_user_id: currentUser.id, processed_by_name: currentUser.email.split('@')[0] };
+        } else if (type === 'approve') {
+            updates = { status: 'approved', updated_at: new Date().toISOString() };
+        } else if (type === 'release') {
+            updates = { status: 'pending', processed_by_user_id: null, processed_by_name: null };
+        }
+
+        const { error } = await supa.from("resources").update(updates).eq("id", id);
+        if (error) throw error;
+
+        showToast("تمت العملية بنجاح", 'success');
+        await loadData(); // مهم جداً لتحديث القائمة فوراً
+    } catch (err) {
+        showToast("فشل: " + err.message, 'error');
+        btn.innerHTML = originalText;
+    } finally {
+        btn.disabled = false;
+    }
+};
+
+window.updateNote = async function(id, note) {
+    try {
+        const { error } = await supa.from("resources").update({ admin_note: note }).eq("id", id);
+        if (error) throw error;
+        showToast("تم حفظ الملاحظة", 'info');
+    } catch (err) {
+        showToast("لم يتم الحفظ", 'error');
+    }
+};
 
 function createRowHTML(row, type) {
     const isMe = row.processed_by_user_id === currentUser?.id;
@@ -122,9 +156,9 @@ function createRowHTML(row, type) {
     const actionButtons = `
         <div class="flex gap-2 w-full justify-end">
             <a href="${row.file_url}" target="_blank" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-xs font-bold transition-all">معاينة</a>
-            ${isFree && row.status === 'pending' ? `<button onclick="updateAction(${row.id}, 'claim')" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-xs font-bold shadow-lg shadow-amber-600/20">حجز</button>` : ''}
-            ${isMe && row.status === 'reviewing' ? `<button onclick="updateAction(${row.id}, 'approve')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-bold shadow-lg shadow-emerald-600/20">اعتماد ✅</button>` : ''}
-            ${isMe ? `<button onclick="updateAction(${row.id}, 'release')" class="px-4 py-2 text-slate-500 hover:text-white text-[10px]">إلغاء</button>` : ''}
+            ${isFree && row.status === 'pending' ? `<button onclick="updateAction(event, ${row.id}, 'claim')" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 rounded-lg text-xs font-bold shadow-lg shadow-amber-600/20">حجز</button>` : ''}
+            ${isMe && row.status === 'reviewing' ? `<button onclick="updateAction(event, ${row.id}, 'approve')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-xs font-bold shadow-lg shadow-emerald-600/20">اعتماد ✅</button>` : ''}
+            ${isMe ? `<button onclick="updateAction(event, ${row.id}, 'release')" class="px-4 py-2 text-slate-500 hover:text-white text-[10px]">إلغاء</button>` : ''}
             ${isLocked ? `<span class="text-[10px] text-slate-600 italic">🔒 محجوز لـ ${row.processed_by_name}</span>` : ''}
         </div>
     `;
@@ -157,46 +191,7 @@ function createRowHTML(row, type) {
     `;
 }
 
-async function updateAction(id, type) {
-    const btn = event.currentTarget;
-    const originalText = btn.innerText;
-    
-    try {
-        btn.disabled = true;
-        btn.innerHTML = `<span class="animate-pulse">جاري...</span>`;
-
-        let updates = {};
-        if (type === 'claim') {
-            updates = { status: 'reviewing', processed_by_user_id: currentUser.id, processed_by_name: currentUser.email.split('@')[0] };
-        } else if (type === 'approve') {
-            updates = { status: 'approved', updated_at: new Date().toISOString() };
-        } else if (type === 'release') {
-            updates = { status: 'pending', processed_by_user_id: null, processed_by_name: null };
-        }
-
-        const { error } = await supa.from("resources").update(updates).eq("id", id);
-        if (error) throw error;
-
-        showToast("تم العملية بنجاح", 'success');
-        loadData();
-    } catch (err) {
-        showToast("فشل: " + err.message, 'error');
-        btn.innerText = originalText;
-    } finally {
-        btn.disabled = false;
-    }
-}
-
-async function updateNote(id, note) {
-    try {
-        const { error } = await supa.from("resources").update({ admin_note: note }).eq("id", id);
-        if (error) throw error;
-        showToast("تم حفظ الملاحظة", 'info');
-    } catch (err) {
-        showToast("لم يتم الحفظ", 'error');
-    }
-}
-
+// بقية الدوال (Stats, Filters, Logout)
 function renderStats() {
     if (!currentUser) return;
     const statsDiv = document.getElementById("productivityStats");
@@ -226,5 +221,8 @@ window.handleLogout = async () => {
     await supa.auth.signOut();
     location.reload();
 };
+
+const searchInputRef = document.getElementById("searchBox");
+if (searchInputRef) searchInputRef.addEventListener("input", render);
 
 checkUser();
