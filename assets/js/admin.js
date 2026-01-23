@@ -1,162 +1,118 @@
-console.log("ADMIN.JS LOADED ✅");
-
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
-
-// التأكد من وجود المكتبة
-if (typeof supabase === 'undefined') {
-    alert("خطأ: مكتبة Supabase لم يتم تحميلها بشكل صحيح!");
-}
-
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let currentFilter = "pending";
 let allRows = [];
+let currentFilter = 'pending';
 
-// --- أدوات مساعدة ---
-const qs = (id) => document.getElementById(id);
-const show = (el) => el && el.classList.remove("hidden");
-const hide = (el) => el && el.classList.add("hidden");
-
-function setLoginMsg(text) {
-    const msg = qs("loginMsg");
-    if (msg) { msg.textContent = text; text ? show(msg) : hide(msg); }
-}
-
-// --- وظائف التحقق والتشغيل ---
-async function refreshUI() {
-    console.log("Refreshing UI...");
+// --- وظيفة التحقق من الصلاحيات ---
+async function checkAccess() {
     const { data: { user } } = await supa.auth.getUser();
 
     if (!user) {
-        show(qs("loginCard"));
-        hide(qs("adminPanel"));
+        document.getElementById('loginCard').classList.remove('hidden');
+        document.getElementById('adminPanel').classList.add('hidden');
+        document.getElementById('whoami').textContent = "LOGGED OUT";
         return;
     }
 
-    // التحقق من جدول الأدمن
-    const { data: adminData, error } = await supa
-        .from("admins")
-        .select("user_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+    const { data: adminData } = await supa.from('admins').select('*').eq('user_id', user.id).maybeSingle();
 
-    if (error || !adminData) {
-        setLoginMsg("عذراً، هذا الحساب ليس أدمن.");
-        show(qs("loginCard"));
-        hide(qs("adminPanel"));
+    if (!adminData) {
+        alert("ليست لديك صلاحية الوصول للإدارة!");
+        document.getElementById('whoami').textContent = "ACCESS DENIED";
         return;
     }
 
-    hide(qs("loginCard"));
-    show(qs("adminPanel"));
-    qs("whoami").textContent = `الأدمن: ${user.email}`;
-    await loadAllRows();
+    document.getElementById('loginCard').classList.add('hidden');
+    document.getElementById('adminPanel').classList.remove('hidden');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+    document.getElementById('whoami').textContent = `ACTIVE: ${user.email}`;
+    
+    fetchData();
 }
 
-async function loadAllRows() {
-    const listBox = qs("listBox");
-    listBox.innerHTML = `<div class="text-center py-10 opacity-40">جاري التحقق من البيانات...</div>`;
-
-    const { data, error } = await supa
-        .from("resources")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-    if (error) {
-        console.error("Fetch error:", error);
-        return;
-    }
-
+// --- جلب البيانات وتحديث الإحصائيات ---
+async function fetchData() {
+    const { data, error } = await supa.from('resources').select('*').order('created_at', { ascending: false });
+    if (error) return console.error(error);
     allRows = data || [];
-    renderList();
+    render();
 }
 
-function renderList() {
-    const listBox = qs("listBox");
-    const countBadge = qs("countBadge");
-    const search = (qs("searchBox")?.value || "").toLowerCase();
+// --- تغيير الحالة (Update) ---
+window.updateStatus = async (id, status) => {
+    const { error } = await supa.from('resources').update({ status }).eq('id', id);
+    if (error) alert(error.message);
+    else fetchData();
+};
+
+// --- الحذف (Delete) ---
+window.deleteRow = async (id) => {
+    if (!confirm("هل أنت متأكد من الحذف النهائي؟")) return;
+    const { error } = await supa.from('resources').delete().eq('id', id);
+    if (error) alert(error.message);
+    else fetchData();
+};
+
+// --- الفلترة (Filter) ---
+window.setFilter = (f) => {
+    currentFilter = f;
+    render();
+};
+
+// --- عرض البيانات (Render) ---
+function render() {
+    const list = document.getElementById('listBox');
+    const search = document.getElementById('searchBox').value.toLowerCase();
+    
+    // تحديث الأعداد
+    document.getElementById('totalCount').textContent = allRows.length;
+    document.getElementById('pendingCount').textContent = allRows.filter(r => r.status === 'pending').length;
+    document.getElementById('approvedCount').textContent = allRows.filter(r => r.status === 'approved').length;
 
     const filtered = allRows.filter(r => {
-        const matchesFilter = currentFilter === "all" || r.status === currentFilter;
-        const matchesSearch = r.subject?.toLowerCase().includes(search);
-        return matchesFilter && matchesSearch;
+        const matchesTab = currentFilter === 'all' || r.status === currentFilter;
+        const matchesSearch = r.subject.toLowerCase().includes(search);
+        return matchesTab && matchesSearch;
     });
 
-    countBadge.textContent = filtered.length;
-
-    if (filtered.length === 0) {
-        listBox.innerHTML = `<div class="text-center py-10 opacity-30">لا توجد سجلات</div>`;
-        return;
-    }
-
-    listBox.innerHTML = filtered.map(row => `
-        <div class="glass p-5 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4 border border-white/5">
+    list.innerHTML = filtered.map(row => `
+        <div class="glass p-5 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-4 transition-all hover:border-white/20">
             <div class="text-right w-full">
                 <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${row.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${row.status}</span>
                     <h3 class="font-bold text-lg">${row.subject}</h3>
+                    <span class="status-${row.status} text-[9px] font-black px-2 py-0.5 rounded-full uppercase">${row.status}</span>
                 </div>
-                <p class="text-sm text-white/40">${row.note || 'بدون ملاحظات'}</p>
+                <p class="text-xs text-white/40">${row.note || 'No notes available'}</p>
             </div>
             <div class="flex gap-2 shrink-0">
-                <a href="${row.file_url}" target="_blank" class="px-4 py-2 bg-white/5 rounded-xl text-xs font-bold">فتح</a>
-                ${row.status !== 'approved' ? `<button onclick="handleAction(${row.id}, 'approved')" class="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-xl text-xs font-bold">اعتماد</button>` : ''}
-                ${row.status !== 'pending' ? `<button onclick="handleAction(${row.id}, 'pending')" class="px-4 py-2 bg-amber-500/20 text-amber-400 rounded-xl text-xs font-bold">تعليق</button>` : ''}
-                <button onclick="handleDelete(${row.id})" class="px-4 py-2 bg-red-500/10 text-red-400 rounded-xl text-xs font-bold">حذف</button>
+                <a href="${row.file_url}" target="_blank" class="px-4 py-2 glass rounded-xl text-xs font-bold">معاينة</a>
+                ${row.status === 'pending' ? `<button onclick="updateStatus(${row.id}, 'approved')" class="px-4 py-2 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl text-xs font-bold">اعتماد</button>` : ''}
+                ${row.status === 'approved' ? `<button onclick="updateStatus(${row.id}, 'pending')" class="px-4 py-2 bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-bold">تعليق</button>` : ''}
+                <button onclick="deleteRow(${row.id})" class="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold">حذف</button>
             </div>
         </div>
     `).join("");
 }
 
-// --- معالجة العمليات ---
-window.handleAction = async (id, status) => {
-    const { error } = await supa.from("resources").update({ status }).eq("id", id);
-    if (error) alert("خطأ: " + error.message);
-    else await loadAllRows();
-};
-
-window.handleDelete = async (id) => {
-    if (!confirm("هل أنت متأكد من الحذف؟")) return;
-    const { error } = await supa.from("resources").delete().eq("id", id);
-    if (error) alert("خطأ: " + error.message);
-    else await loadAllRows();
-};
-
-window.setFilter = (f) => {
-    currentFilter = f;
-    renderList();
-};
-
-// --- تشغيل النظام عند التحميل ---
-document.addEventListener("DOMContentLoaded", () => {
-    qs("loginForm")?.addEventListener("submit", async (e) => {
+// --- مستمعي الأحداث ---
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        setLoginMsg("جاري الدخول...");
-        const email = qs("email").value.trim();
-        const password = qs("password").value;
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
         const { error } = await supa.auth.signInWithPassword({ email, password });
-        if (error) {
-            alert("خطأ: " + error.message);
-            setLoginMsg("فشل الدخول.");
-        } else {
-            await refreshUI();
-        }
+        if (error) alert("خطأ: " + error.message);
+        else checkAccess();
     });
 
-    qs("logoutBtn")?.addEventListener("click", async () => {
+    document.getElementById('logoutBtn').onclick = async () => {
         await supa.auth.signOut();
         location.reload();
-    });
+    };
 
-    qs("searchBox")?.addEventListener("input", renderList);
-    
-    document.querySelectorAll(".filterBtn").forEach(btn => {
-        btn.onclick = () => {
-            currentFilter = btn.dataset.filter;
-            renderList();
-        };
-    });
+    document.getElementById('searchBox').oninput = render;
 
-    refreshUI();
+    checkAccess();
 });
