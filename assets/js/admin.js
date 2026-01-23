@@ -2,9 +2,6 @@ const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// لم نعد نعتمد على SUPER_ADMIN_EMAIL في الصلاحيات
-// const SUPER_ADMIN_EMAIL = "admin@example.com";
-
 let allRows = [];
 let currentFilter = "pending";
 
@@ -13,7 +10,7 @@ let currentAdminEmail = "";
 let currentAdminUserId = "";
 let isSuperAdmin = false;
 
-// نظام الدخول
+// ================= AUTH =================
 document.getElementById("loginForm").onsubmit = async (e) => {
   e.preventDefault();
   const email = document.getElementById("email").value.trim();
@@ -22,7 +19,6 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   btn.innerText = "جاري التحقق...";
 
   const { error } = await supa.auth.signInWithPassword({ email, password });
-
   if (error) {
     alert("خطأ: " + error.message);
     btn.innerText = "دخول النظام";
@@ -33,18 +29,8 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 };
 
 async function checkUser() {
-  const { data: { session }, error } = await supa.auth.getSession();
-  if (error) {
-    console.error(error);
-    return;
-  }
-
-  if (!session) {
-    // غير مسجل دخول
-    document.getElementById("loginCard").classList.remove("hidden");
-    document.getElementById("adminPanel").classList.add("hidden");
-    return;
-  }
+  const { data: { session } } = await supa.auth.getSession();
+  if (!session) return;
 
   currentAdminEmail = session.user.email || "";
   currentAdminUserId = session.user.id;
@@ -52,38 +38,32 @@ async function checkUser() {
   document.getElementById("loginCard").classList.add("hidden");
   document.getElementById("adminPanel").classList.remove("hidden");
 
-  // اجلب بيانات الأدمن (الاسم + هل هو سوبر)
-  const { data: admin, error: adminErr } = await supa
+  const { data: admin } = await supa
     .from("admins")
     .select("full_name,is_super")
     .eq("user_id", currentAdminUserId)
     .maybeSingle();
 
-  if (adminErr) {
-    console.warn("admins select error:", adminErr);
-  }
-
-  currentAdminName = admin?.full_name || (currentAdminEmail.split("@")[0] || "admin");
+  currentAdminName = admin?.full_name || currentAdminEmail.split("@")[0];
   isSuperAdmin = !!admin?.is_super;
 
   document.getElementById("whoami").innerHTML = `
     <span class="text-blue-400 text-[10px] block font-black uppercase tracking-tighter">المشرف المسؤول</span>
     <span class="text-white font-black text-lg">${currentAdminName}</span>
-    ${isSuperAdmin ? `<span class="text-[10px] text-amber-400 font-black block mt-1">صلاحية: Super Admin</span>` : ""}
+    ${isSuperAdmin ? `<span class="text-[10px] text-amber-400 font-black block mt-1">Super Admin</span>` : ""}
   `;
 
   await loadData();
 }
 
+// ================= DATA =================
 async function loadData() {
-  // يفضل تحديد الأعمدة بدل *
   const { data, error } = await supa
     .from("resources")
-    .select("id,subject,description,file_url,status,admin_note,processed_by_user_id,processed_by_name,created_at,updated_at")
+    .select("id,subject,file_url,status,admin_note,processed_by_user_id,processed_by_name,created_at,updated_at")
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error(error);
     alert("تعذر تحميل البيانات: " + error.message);
     return;
   }
@@ -92,12 +72,12 @@ async function loadData() {
   render();
 }
 
+// ================= RENDER =================
 function render() {
   const desktop = document.getElementById("desktopList");
   const mobile = document.getElementById("mobileList");
   const search = (document.getElementById("searchBox").value || "").toLowerCase();
 
-  // الإحصائيات العلوية (حسب user_id)
   const todayStr = new Date().toLocaleDateString();
   const stats = {
     today: allRows.filter(r =>
@@ -118,42 +98,25 @@ function render() {
 
   document.getElementById("productivityStats").innerHTML = `
     <div class="flex justify-around items-center h-full gap-2">
-      <div class="text-center flex-1">
-        <p class="text-[9px] text-blue-400 font-bold">أنجزت اليوم</p>
-        <p class="text-xl font-black text-white">${stats.today}</p>
-      </div>
+      <div class="text-center flex-1"><p class="text-[9px] text-blue-400 font-bold">أنجزت اليوم</p><p class="text-xl font-black text-white">${stats.today}</p></div>
       <div class="w-px h-8 bg-slate-700"></div>
-      <div class="text-center flex-1">
-        <p class="text-[9px] text-amber-500 font-bold">قيد المراجعة</p>
-        <p class="text-xl font-black text-white">${stats.review}</p>
-      </div>
+      <div class="text-center flex-1"><p class="text-[9px] text-amber-500 font-bold">قيد المراجعة</p><p class="text-xl font-black text-white">${stats.review}</p></div>
       <div class="w-px h-8 bg-slate-700"></div>
-      <div class="text-center flex-1">
-        <p class="text-[9px] text-emerald-400 font-bold">الإجمالي</p>
-        <p class="text-xl font-black text-white">${stats.total}</p>
-      </div>
+      <div class="text-center flex-1"><p class="text-[9px] text-emerald-400 font-bold">الإجمالي</p><p class="text-xl font-black text-white">${stats.total}</p></div>
     </div>
   `;
 
-  // فلترة + بحث
   const filtered = allRows.filter(r => {
     const matchStatus = (currentFilter === "all" || r.status === currentFilter);
-    const subject = (r.subject || "").toLowerCase();
-    const matchSearch = subject.includes(search);
+    const matchSearch = (r.subject || "").toLowerCase().includes(search);
     return matchStatus && matchSearch;
   });
 
-  const statusBadgeAr = (s) => {
-    if (s === "pending") return "جديد";
-    if (s === "reviewing") return "قيد المراجعة";
-    if (s === "approved") return "تم النشر";
-    return s || "--";
-  };
+  const statusAr = s => s === "pending" ? "جديد" : s === "reviewing" ? "قيد المراجعة" : s === "approved" ? "تم النشر" : s;
 
   const getBtns = (row) => {
     const isMe = row.processed_by_user_id === currentAdminUserId;
     const isFree = !row.processed_by_user_id;
-    const lockerName = row.processed_by_name || "--";
 
     let btns = `
       <a href="${row.file_url}" target="_blank"
@@ -162,22 +125,20 @@ function render() {
       </a>
     `;
 
-    // الحجز: متاح إذا الملف غير محجوز (أو سوبر أدمن)
     if ((isFree || isSuperAdmin) && row.status === "pending") {
       btns += `
         <button onclick="claim(${row.id})"
-                class="flex-[2] bg-amber-600 text-white py-3 rounded-xl text-[10px] font-black shadow-lg shadow-amber-900/40">
+                class="flex-[2] bg-amber-600 text-white py-3 rounded-xl text-[10px] font-black">
           حجز للمراجعة ✋
         </button>
       `;
     }
 
-    // إجراءات المراجع الحالي أو السوبر أدمن
     if (isMe || isSuperAdmin) {
       if (row.status === "reviewing") {
         btns += `
           <button onclick="updateStatus(${row.id}, 'approved')"
-                  class="flex-[2] bg-emerald-600 text-white py-3 rounded-xl text-[10px] font-black shadow-lg shadow-emerald-900/40">
+                  class="flex-[2] bg-emerald-600 text-white py-3 rounded-xl text-[10px] font-black">
             نشر الملف ✅
           </button>
           <button onclick="release(${row.id})"
@@ -194,10 +155,9 @@ function render() {
         `;
       }
     } else if (!isFree && !isMe) {
-      // محجوز لشخص آخر
       btns = `
         <div class="w-full text-center py-3 bg-slate-900/80 rounded-xl border border-slate-800 text-[10px] text-slate-500 italic">
-          🔒 الملف محجوز لـ ${lockerName}
+          🔒 الملف محجوز
         </div>
       `;
     }
@@ -205,94 +165,52 @@ function render() {
     return btns;
   };
 
-  desktop.innerHTML = filtered.map(row => {
-    const lockedByOther = row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId;
-
-    return `
-      <tr class="archive-item ${lockedByOther ? "opacity-40" : ""}">
-        <td class="p-4 rounded-r-2xl border-y border-r border-slate-800">
-          <div class="font-black text-white text-sm">${row.subject || "--"}</div>
-          <div class="text-[10px] text-amber-500 mt-1 italic font-bold">📌 الطالب: ${row.description || "بدون وصف"}</div>
-        </td>
-
-        <td class="p-4 border-y border-slate-800">
-          <textarea onchange="updateNote(${row.id}, this.value)"
-                    class="w-full h-12 p-3 text-[11px] bg-black/40 border border-slate-800 rounded-xl focus:border-blue-500 transition-all"
-                    ${lockedByOther && !isSuperAdmin ? "disabled" : ""}>${row.admin_note || ""}</textarea>
-        </td>
-
-        <td class="p-4 border-y border-slate-800 text-center text-blue-400/50 font-black text-[10px] uppercase">
-          ${row.processed_by_name || "--"}
-        </td>
-
-        <td class="p-4 rounded-l-2xl border-y border-l border-slate-800 min-w-[220px]">
-          <div class="flex gap-2">${getBtns(row)}</div>
-        </td>
-      </tr>
-    `;
-  }).join("");
-
-  mobile.innerHTML = filtered.map(row => {
-    const lockedByOther = row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId;
-
-    return `
-      <div class="archive-item p-5 rounded-[2.2rem] space-y-4 ${lockedByOther ? "opacity-60 grayscale-[0.3]" : ""}">
-        <div class="flex justify-between">
-          <div class="space-y-1">
-            <span class="bg-blue-500/10 text-blue-500 text-[8px] font-black px-2 py-0.5 rounded-md uppercase">
-              ${statusBadgeAr(row.status)}
-            </span>
-            <h3 class="font-black text-white text-lg leading-tight">${row.subject || "--"}</h3>
-          </div>
-          <div class="text-left font-black text-[10px] text-blue-400 opacity-60">
-            ${row.processed_by_name || "متاح"}
-          </div>
-        </div>
-
-        <div class="bg-amber-500/5 border-r-2 border-amber-500/30 p-3 rounded-xl italic text-[10px] text-amber-500 font-bold leading-relaxed">
-          " ${row.description || "بدون وصف من الطالب"} "
-        </div>
-
+  desktop.innerHTML = filtered.map(row => `
+    <tr class="archive-item ${row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId ? "opacity-40" : ""}">
+      <td class="p-4 rounded-r-2xl border-y border-r border-slate-800">
+        <div class="font-black text-white text-sm">${row.subject || "--"}</div>
+      </td>
+      <td class="p-4 border-y border-slate-800">
         <textarea onchange="updateNote(${row.id}, this.value)"
-                  class="w-full p-4 text-[12px] h-24 bg-black/40 border border-slate-800 rounded-2xl focus:border-blue-500 transition-all"
-                  placeholder="اكتب ملاحظة اللجنة..."
-                  ${lockedByOther && !isSuperAdmin ? "disabled" : ""}>${row.admin_note || ""}</textarea>
+                  class="w-full h-12 p-3 text-[11px] bg-black/40 border border-slate-800 rounded-xl"
+                  ${row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId && !isSuperAdmin ? "disabled" : ""}>${row.admin_note || ""}</textarea>
+      </td>
+      <td class="p-4 border-y border-slate-800 text-center text-blue-400/50 font-black text-[10px] uppercase">
+        ${row.processed_by_name || "--"}
+      </td>
+      <td class="p-4 rounded-l-2xl border-y border-l border-slate-800 min-w-[220px]">
+        <div class="flex gap-2">${getBtns(row)}</div>
+      </td>
+    </tr>
+  `).join("");
 
-        <div class="flex gap-2 pt-2">${getBtns(row)}</div>
+  mobile.innerHTML = filtered.map(row => `
+    <div class="archive-item p-5 rounded-[2.2rem] space-y-4">
+      <div class="flex justify-between">
+        <h3 class="font-black text-white text-lg">${row.subject || "--"}</h3>
+        <div class="text-left font-black text-[10px] text-blue-400 opacity-60">
+          ${row.processed_by_name || "متاح"}
+        </div>
       </div>
-    `;
-  }).join("");
+      <textarea onchange="updateNote(${row.id}, this.value)"
+                class="w-full p-4 text-[12px] h-24 bg-black/40 border border-slate-800 rounded-2xl"
+                ${row.processed_by_user_id && row.processed_by_user_id !== currentAdminUserId && !isSuperAdmin ? "disabled" : ""}>${row.admin_note || ""}</textarea>
+      <div class="flex gap-2 pt-2">${getBtns(row)}</div>
+    </div>
+  `).join("");
 
   document.getElementById("totalCount").textContent = allRows.length;
 }
 
-/**
- * الحجز الذكي (Atomic) عبر RPC
- */
+// ================= ACTIONS =================
 window.claim = async (id) => {
   const { data, error } = await supa.rpc("claim_resource", { p_resource_id: id });
-
-  if (error) {
-    alert("فشل الحجز: " + error.message);
-    return;
-  }
-  if (!data) {
-    alert("تم حجز الملف من شخص آخر.");
-    return;
-  }
-
+  if (error) return alert("فشل الحجز: " + error.message);
+  if (!data) return alert("تم حجز الملف من شخص آخر.");
   await loadData();
 };
 
-/**
- * تحديث الحالة (reviewing لا يمر من هنا، له claim)
- */
 window.updateStatus = async (id, s) => {
-  // إذا أحد حاول يمرر reviewing من هنا، امنعه ووجهه للحجز
-  if (s === "reviewing") {
-    return window.claim(id);
-  }
-
   const payload = {
     status: s,
     processed_by_user_id: currentAdminUserId,
@@ -301,48 +219,40 @@ window.updateStatus = async (id, s) => {
   };
 
   const { error } = await supa.from("resources").update(payload).eq("id", id);
-  if (error) {
-    alert("فشل التحديث: " + error.message);
-    return;
-  }
-
+  if (error) return alert("فشل التحديث: " + error.message);
   await loadData();
 };
 
 window.updateNote = async (id, n) => {
-  const payload = {
-    admin_note: n,
-    processed_by_user_id: currentAdminUserId,
-    processed_by_name: currentAdminName
-  };
+  const { error } = await supa.from("resources")
+    .update({
+      admin_note: n,
+      processed_by_user_id: currentAdminUserId,
+      processed_by_name: currentAdminName
+    })
+    .eq("id", id);
 
-  const { error } = await supa.from("resources").update(payload).eq("id", id);
-  if (error) {
-    alert("فشل حفظ الملاحظة: " + error.message);
-  }
+  if (error) alert("فشل حفظ الملاحظة: " + error.message);
 };
 
 window.release = async (id) => {
-  const payload = {
-    processed_by_user_id: null,
-    processed_by_name: null,
-    status: "pending"
-  };
+  const { error } = await supa.from("resources")
+    .update({
+      processed_by_user_id: null,
+      processed_by_name: null,
+      status: "pending"
+    })
+    .eq("id", id);
 
-  const { error } = await supa.from("resources").update(payload).eq("id", id);
-  if (error) {
-    alert("فشل الإلغاء: " + error.message);
-    return;
-  }
-
+  if (error) return alert("فشل الإلغاء: " + error.message);
   await loadData();
 };
 
-document.querySelectorAll(".filterBtn").forEach((b) => (b.onclick = () => {
+document.querySelectorAll(".filterBtn").forEach(b => b.onclick = () => {
   currentFilter = b.dataset.filter;
-  document.querySelectorAll(".filterBtn").forEach((x) => x.classList.remove("bg-blue-600", "text-white"));
+  document.querySelectorAll(".filterBtn").forEach(x => x.classList.remove("bg-blue-600", "text-white"));
   b.classList.add("bg-blue-600", "text-white");
   render();
-}));
+});
 
 checkUser();
