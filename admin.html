@@ -1,66 +1,77 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>لوحة الأدمن الاحترافية</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة الاحترافية | EE Resources</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Cairo', sans-serif; background: #060714; color: #fff; min-height: 100vh; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .btn-brand { background: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%); transition: all 0.2s; }
-        .btn-brand:hover { transform: translateY(-2px); opacity: 0.9; }
-        .status-pending { color: #fbbf24; background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); }
-        .status-approved { color: #34d399; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); }
-        input { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: white !important; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); }
+        .status-pending { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
+        .status-approved { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
+        .btn-brand { background: linear-gradient(135deg, #4F46E5 0%, #06B6D4 100%); transition: 0.3s; }
+        .btn-brand:hover { transform: scale(1.02); opacity: 0.9; }
+        input { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; color: #fff !important; outline: none; }
+        .loading-shimmer { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-4 md:p-10">
 
     <div class="max-w-6xl mx-auto">
-        <div class="glass rounded-3xl p-6 mb-8 flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">لوحة الإدارة</h1>
-                <p id="whoami" class="text-xs text-white/40 mt-1">جاري فحص الصلاحيات...</p>
+        <header class="glass rounded-[2rem] p-6 mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="text-right">
+                <h1 class="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-cyan-400">لوحة الإدارة</h1>
+                <p id="whoami" class="text-white/40 text-xs mt-1 font-bold">جاري التحقق من الصلاحيات...</p>
             </div>
-            <button id="logoutBtn" class="hidden glass px-4 py-2 rounded-xl text-xs font-bold text-red-400 hover:bg-red-500/10">خروج</button>
-        </div>
+            <div class="flex gap-3">
+                <button onclick="fetchData()" class="glass px-4 py-2 rounded-xl text-xs font-bold hover:bg-white/10">تحديث البيانات</button>
+                <button id="logoutBtn" class="hidden glass px-4 py-2 rounded-xl text-xs font-bold text-red-400 border-red-500/20 hover:bg-red-500/10">خروج</button>
+            </div>
+        </header>
 
-        <div id="loginCard" class="hidden glass rounded-[2.5rem] p-8 max-w-md mx-auto mt-20">
-            <h2 class="text-xl font-bold mb-6 text-center">دخول الإدارة</h2>
+        <div id="loginCard" class="hidden glass rounded-[2.5rem] p-10 max-w-md mx-auto mt-20">
+            <div class="text-center mb-8">
+                <h2 class="text-2xl font-black">تسجيل الدخول</h2>
+                <p class="text-white/40 text-sm">مخصص للأدمن فقط</p>
+            </div>
             <form id="loginForm" class="space-y-4">
-                <input id="email" type="email" placeholder="البريد الإلكتروني" class="w-full p-4 rounded-2xl outline-none" required>
-                <input id="password" type="password" placeholder="كلمة المرور" class="w-full p-4 rounded-2xl outline-none" required>
-                <button type="submit" class="btn-brand w-full py-4 rounded-2xl font-black">تسجيل الدخول</button>
+                <input id="email" type="email" placeholder="البريد الإلكتروني" class="w-full p-4 rounded-2xl" required>
+                <input id="password" type="password" placeholder="كلمة المرور" class="w-full p-4 rounded-2xl" required>
+                <button type="submit" class="btn-brand w-full py-4 rounded-2xl font-black text-lg">دخول</button>
             </form>
-            <p id="loginMsg" class="mt-4 text-center text-sm text-amber-300"></p>
         </div>
 
-        <div id="adminPanel" class="hidden space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="glass p-6 rounded-3xl">
-                    <div class="text-xs opacity-40 mb-1">الإجمالي</div>
-                    <div id="totalCount" class="text-3xl font-black">0</div>
+        <div id="adminPanel" class="hidden space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass p-8 rounded-[2.5rem] relative overflow-hidden">
+                    <div class="text-xs text-white/30 uppercase font-black mb-1">الإجمالي</div>
+                    <div id="totalCount" class="text-5xl font-black">0</div>
+                    <div class="absolute -right-4 -bottom-4 text-white/5 text-7xl font-black italic">ALL</div>
                 </div>
-                <div class="glass p-6 rounded-3xl border-amber-500/20">
-                    <div class="text-xs text-amber-500/60 mb-1">في الانتظار</div>
-                    <div id="pendingCount" class="text-3xl font-black text-amber-500">0</div>
+                <div class="glass p-8 rounded-[2.5rem] border-amber-500/10">
+                    <div class="text-xs text-amber-500/40 uppercase font-black mb-1">بانتظار المراجعة</div>
+                    <div id="pendingCount" class="text-5xl font-black text-amber-500">0</div>
                 </div>
-                <div class="glass p-6 rounded-3xl border-emerald-500/20">
-                    <div class="text-xs text-emerald-500/60 mb-1">معتمد</div>
-                    <div id="approvedCount" class="text-3xl font-black text-emerald-500">0</div>
+                <div class="glass p-8 rounded-[2.5rem] border-emerald-500/10">
+                    <div class="text-xs text-emerald-500/40 uppercase font-black mb-1">تم الاعتماد</div>
+                    <div id="approvedCount" class="text-5xl font-black text-emerald-500">0</div>
                 </div>
             </div>
 
-            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <div class="flex gap-2">
-                    <button onclick="setFilter('pending')" class="filter-btn glass px-6 py-2 rounded-xl text-xs font-bold active">Pending</button>
-                    <button onclick="setFilter('approved')" class="filter-btn glass px-6 py-2 rounded-xl text-xs font-bold">Approved</button>
-                    <button onclick="setFilter('all')" class="filter-btn glass px-6 py-2 rounded-xl text-xs font-bold">الكل</button>
+            <div class="flex flex-col md:flex-row gap-6 items-center justify-between">
+                <div class="flex glass p-1 rounded-2xl gap-1">
+                    <button onclick="setFilter('pending')" class="filter-btn px-6 py-2 rounded-xl text-xs font-bold transition-all" id="btn-pending">Pending</button>
+                    <button onclick="setFilter('approved')" class="filter-btn px-6 py-2 rounded-xl text-xs font-bold transition-all" id="btn-approved">Approved</button>
+                    <button onclick="setFilter('all')" class="filter-btn px-6 py-2 rounded-xl text-xs font-bold transition-all" id="btn-all">الكل</button>
                 </div>
-                <input type="text" id="searchBox" placeholder="بحث باسم المادة..." class="w-full md:w-72 p-3 rounded-xl outline-none">
+                <div class="relative w-full md:w-96">
+                    <input type="text" id="searchBox" placeholder="بحث باسم المادة أو الملاحظات..." class="w-full p-4 px-12 rounded-2xl">
+                    <span class="absolute right-4 top-4 opacity-20">🔍</span>
+                </div>
             </div>
 
             <div id="listBox" class="grid gap-4">
