@@ -2,7 +2,7 @@ const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const SUPER_ADMIN_EMAIL = "mohammed.rasasi@gmail.com"; // ضع إيميلك هنا
+const SUPER_ADMIN_EMAIL = "mohammed.rasasi@gmail.com"; 
 
 let allRows = [];
 let currentFilter = "pending";
@@ -29,8 +29,10 @@ async function refreshUI() {
 
 // تفعيل زر تسجيل الخروج
 document.getElementById("logoutBtn").onclick = async () => {
-    await supa.auth.signOut();
-    location.reload(); // إعادة تحميل الصفحة للعودة لشاشة الدخول
+    if(confirm("هل تريد الخروج؟")) {
+        await supa.auth.signOut();
+        location.reload();
+    }
 };
 
 async function loadAllRows() {
@@ -46,97 +48,109 @@ function renderLists() {
     
     const filtered = allRows.filter(r => (currentFilter === "all" || r.status === currentFilter) && r.subject.toLowerCase().includes(search));
 
+    // حساب الإنجازات والتحفيز
+    const today = new Date().toLocaleDateString();
+    const myDoneToday = allRows.filter(r => r.processed_by === currentAdminName && r.status === 'approved' && new Date(r.updated_at).toLocaleDateString() === today).length;
+    const myTotalEver = allRows.filter(r => r.processed_by === currentAdminName && r.status === 'approved').length;
+
+    let rank = "بداية موفقة ☕";
+    if (myDoneToday > 5) rank = "أداء رهيب! 🚀";
+    if (myDoneToday > 15) rank = "أنت أسطورة اليوم! ⭐";
+
+    document.getElementById("productivityStats").innerHTML = `
+        <h2 class="text-white font-black text-lg">${rank}</h2>
+        <p class="text-[11px] text-blue-300">أنجزت اليوم: ${myDoneToday} | إجمالي بصماتك: ${myTotalEver}</p>
+    `;
+    document.getElementById("totalCount").textContent = allRows.length;
+
     const generateHTML = (row, type) => {
         const isSuperAdmin = currentAdminEmail === SUPER_ADMIN_EMAIL;
         const isOwner = row.processed_by === currentAdminName;
-        const isUnowned = !row.processed_by || row.processed_by === "" || row.processed_by === "--";
+        const isUnowned = !row.processed_by || row.processed_by === "";
         const canEdit = isOwner || isUnowned || isSuperAdmin;
 
-        const actionButtons = `
-            <div class="flex gap-2 justify-center text-[10px] font-black">
-                <a href="${row.file_url}" target="_blank" class="text-blue-400 p-1">فتح</a>
+        let statusBadge = row.status === 'approved' ? 'bg-emerald-500/20 text-emerald-500' : 
+                          row.status === 'reviewing' ? 'bg-amber-500/20 text-amber-500' : 'bg-slate-700/50 text-slate-400';
+        let statusText = row.status === 'approved' ? 'تم النشر ✅' : 
+                         row.status === 'reviewing' ? 'قيد المراجعة ⏳' : 'بانتظار البدء';
+
+        const btns = `
+            <div class="flex flex-wrap gap-2 justify-center">
+                <a href="${row.file_url}" target="_blank" class="bg-blue-600/10 text-blue-400 px-4 py-2 rounded-xl text-[10px] font-black">فتح الملف</a>
                 ${canEdit ? `
-                    <button onclick="toggleStatus(${row.id}, '${row.status}')" class="${row.status === 'approved' ? 'text-amber-500' : 'text-emerald-500'} p-1">
-                        ${row.status === 'approved' ? 'تعليق' : 'نشر ✅'}
-                    </button>
-                    ${!isUnowned ? `<button onclick="releaseLock(${row.id})" class="text-white bg-slate-700 px-2 py-0.5 rounded text-[9px]">فك القفل 🔓</button>` : ''}
-                ` : `<span class="text-red-500">🔒 مقفل</span>`}
-                ${isSuperAdmin || isOwner ? `<button onclick="deleteRow(${row.id})" class="text-slate-500 hover:text-red-500 p-1">✕</button>` : ''}
-            </div>
-        `;
+                    ${row.status === 'pending' ? `<button onclick="updateStatus(${row.id}, 'reviewing')" class="bg-amber-600 text-white px-4 py-2 rounded-xl text-[10px] font-black">حجز للمراجعة</button>` : ''}
+                    ${row.status === 'reviewing' ? `<button onclick="updateStatus(${row.id}, 'approved')" class="bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black shadow-lg shadow-emerald-500/20">اعتماد ونشر (تم)</button>` : ''}
+                    ${row.status === 'approved' ? `<button onclick="updateStatus(${row.id}, 'pending')" class="bg-red-500/10 text-red-500 px-4 py-2 rounded-xl text-[10px] font-black">سحب النشر</button>` : ''}
+                    ${!isUnowned ? `<button onclick="releaseLock(${row.id})" class="text-slate-400 border border-slate-800 px-3 py-2 rounded-xl text-[9px]">فك القفل 🔓</button>` : ''}
+                ` : `<span class="text-[9px] text-red-400 italic">🔒 مقفل بواسطة ${row.processed_by}</span>`}
+            </div>`;
 
         if (type === 'desktop') {
             return `
-            <tr class="archive-item ${!canEdit ? 'opacity-40 grayscale-[0.5]' : ''}">
-                <td class="p-3 rounded-r-2xl border-y border-r border-slate-800">
-                    <input type="text" ${!canEdit ? 'disabled' : ''} onchange="updateData(${row.id}, {subject: this.value})" class="bg-transparent border-none text-xs font-black w-full" value="${row.subject}">
-                    <div class="text-[9px] text-amber-500 italic mt-1">📌 وصف الطالب: ${row.description || 'بدون وصف'}</div>
+            <tr class="archive-item ${!canEdit ? 'locked-row' : ''}">
+                <td class="p-5 rounded-r-[1.5rem] border-y border-r border-slate-800">
+                    <div class="font-black text-sm text-white">${row.subject}</div>
+                    <div class="text-[10px] text-amber-500 bg-amber-500/5 p-2 rounded-lg mt-2 italic">📌 ${row.description || 'بدون وصف'}</div>
                 </td>
-                <td class="p-3 border-y border-slate-800">
-                    <textarea ${!canEdit ? 'disabled' : ''} onchange="updateData(${row.id}, {admin_note: this.value})" class="w-full h-10 p-2 text-[11px] bg-black/20" placeholder="${!canEdit ? 'بانتظار الإذن من ' + row.processed_by : 'ملاحظة اللجنة...'}">${row.admin_note || ''}</textarea>
+                <td class="p-5 border-y border-slate-800">
+                    <textarea ${!canEdit ? 'disabled' : ''} onchange="updateNote(${row.id}, this.value)" class="w-full h-12 p-3 text-[11px]" placeholder="ملاحظة اللجنة...">${row.admin_note || ''}</textarea>
                 </td>
-                <td class="p-3 border-y border-slate-800 text-center text-[10px] font-bold text-blue-400/60">${row.processed_by || '--'}</td>
-                <td class="p-3 rounded-l-2xl border-y border-l border-slate-800">${actionButtons}</td>
+                <td class="p-5 border-y border-slate-800 text-center">
+                    <div class="px-3 py-1.5 rounded-full font-black text-[9px] inline-block ${statusBadge}">${statusText}</div>
+                    <div class="text-[9px] mt-2 font-bold text-blue-400/40">${row.processed_by || '--'}</div>
+                </td>
+                <td class="p-5 rounded-l-[1.5rem] border-y border-l border-slate-800">${btns}</td>
             </tr>`;
-        } else {
-            return `
-            <div class="archive-item p-4 rounded-3xl ${!canEdit ? 'opacity-50 grayscale' : ''}">
-                <div class="flex justify-between items-center mb-2">
-                    <div class="font-black text-xs">${row.subject}</div>
-                    <div class="text-[9px] font-bold text-blue-400/50">${row.processed_by || 'متاح'}</div>
-                </div>
-                <div class="text-[10px] text-amber-500 bg-amber-500/5 p-2 rounded-lg mb-2 italic">📝 ${row.description || 'لا يوجد وصف.'}</div>
-                <textarea ${!canEdit ? 'disabled' : ''} onchange="updateData(${row.id}, {admin_note: this.value})" class="w-full p-2 text-[11px] h-14 mb-2" placeholder="ملاحظة المشرف...">${row.admin_note || ''}</textarea>
-                ${actionButtons}
-            </div>`;
         }
+        return `
+        <div class="archive-item p-6 space-y-4 shadow-xl border border-slate-800 ${!canEdit ? 'locked-row' : ''}">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                <div class="px-3 py-1 rounded-full font-black text-[9px] ${statusBadge}">${statusText}</div>
+                <div class="text-[9px] font-bold text-blue-500/50">${row.processed_by || 'متاح'}</div>
+            </div>
+            <div class="font-black text-base text-white">${row.subject}</div>
+            <div class="bg-amber-500/5 p-4 rounded-2xl text-[11px] text-amber-500 leading-relaxed italic border-r-4 border-amber-500/30 shadow-inner">📝 وصف الطالب: ${row.description || 'لا يوجد وصف.'}</div>
+            <textarea ${!canEdit ? 'disabled' : ''} onchange="updateNote(${row.id}, this.value)" class="w-full p-4 text-xs h-24 shadow-inner" placeholder="اكتب ملاحظة اللجنة العلمية هنا...">${row.admin_note || ''}</textarea>
+            <div class="pt-2">${btns}</div>
+        </div>`;
     };
 
     desktopBody.innerHTML = filtered.map(r => generateHTML(r, 'desktop')).join("");
     mobileContainer.innerHTML = filtered.map(r => generateHTML(r, 'mobile')).join("");
 }
 
-// دالة فك القفل (تصفير الملكية)
-window.releaseLock = async (id) => {
-    if (!confirm("هل تريد فك القفل عن هذا الملف لإتاحته لمشرفين آخرين؟")) return;
-    await supa.from("resources").update({ processed_by: null }).eq("id", id);
-    loadAllRows();
-};
-
-async function updateData(id, updateObj) {
-    const finalUpdate = { ...updateObj, processed_by: currentAdminName };
-    await supa.from("resources").update(finalUpdate).eq("id", id);
-    loadAllRows(); // تحديث فوري للقائمة بعد التعديل
-}
-
-window.toggleStatus = async (id, status) => {
-    const newStatus = status === 'approved' ? 'pending' : 'approved';
-    let updateObj = { status: newStatus, processed_by: currentAdminName };
-    
-    // إذا كان يسحب النشر، نسأله إذا يبي يشيل اسمه
-    if (status === 'approved') {
-        if (confirm("تم سحب النشر. هل تريد فك القفل عن الملف أيضاً؟")) {
-            updateObj.processed_by = null;
-        }
+window.updateStatus = async (id, newStatus) => {
+    let updateObj = { status: newStatus, processed_by: currentAdminName, updated_at: new Date().toISOString() };
+    if (newStatus === 'pending') {
+        if (confirm("تم سحب النشر. هل تريد فك قفل الملف لإتاحته للآخرين؟")) updateObj.processed_by = null;
     }
-    
     await supa.from("resources").update(updateObj).eq("id", id);
     loadAllRows();
 };
 
-window.deleteRow = async (id) => { if(confirm("حذف؟")) { await supa.from("resources").delete().eq("id", id); loadAllRows(); } };
+window.updateNote = async (id, note) => {
+    await supa.from("resources").update({ admin_note: note, processed_by: currentAdminName, updated_at: new Date().toISOString() }).eq("id", id);
+    loadAllRows();
+};
+
+window.releaseLock = async (id) => {
+    if(confirm("هل تريد فك القفل لتمكين مشرف آخر من تعديل الملف؟")) {
+        await supa.from("resources").update({ processed_by: null }).eq("id", id);
+        loadAllRows();
+    }
+};
 
 document.getElementById("loginForm").onsubmit = async (e) => {
     e.preventDefault();
     const { error } = await supa.auth.signInWithPassword({ email: document.getElementById("email").value, password: document.getElementById("password").value });
-    if (error) alert("خطأ في الدخول: " + error.message);
+    if (error) alert("خطأ: " + error.message);
     refreshUI();
 };
 document.getElementById("searchBox").oninput = renderLists;
 document.querySelectorAll(".filterBtn").forEach(btn => btn.onclick = () => {
     currentFilter = btn.dataset.filter;
-    document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("bg-blue-600", "text-white"));
-    btn.classList.add("bg-blue-600", "text-white");
+    document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("bg-blue-600", "text-white", "shadow-lg"));
+    btn.classList.add("bg-blue-600", "text-white", "shadow-lg");
     renderLists();
 });
 refreshUI();
