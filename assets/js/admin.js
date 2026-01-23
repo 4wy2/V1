@@ -1,9 +1,18 @@
+console.log("ADMIN.JS LOADED ✅");
+
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
 
+if (!window.supabase) {
+  alert("Supabase JS لم يتم تحميله. تأكد من رابط CDN.");
+  throw new Error("supabase-js not loaded");
+}
+
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
+    // يقلل مشاكل Safari/Brave قدر الإمكان
+    flowType: "pkce",
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
@@ -14,22 +23,10 @@ const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 let currentFilter = "pending";
 let allRows = [];
 
-// ---------- UI helpers ----------
+// ---------------- UI helpers ----------------
+function qs(id){ return document.getElementById(id); }
 function show(el){ el && el.classList.remove("hidden"); }
 function hide(el){ el && el.classList.add("hidden"); }
-
-function setMsg(text){
-  const msg = document.getElementById("loginMsg");
-  if (!msg) return;
-  if (!text){ hide(msg); msg.textContent = ""; return; }
-  msg.textContent = text;
-  show(msg);
-}
-
-function setDebug(html){
-  const box = document.getElementById("debugBox");
-  if (box) box.innerHTML = html || "";
-}
 
 function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, (s)=>({
@@ -37,7 +34,33 @@ function escapeHtml(str){
   }[s]));
 }
 
-// ---------- auth ----------
+function setLoginMsg(text){
+  const msg = qs("loginMsg");
+  if (!msg) return;
+  if (!text){ hide(msg); msg.textContent=""; return; }
+  msg.textContent = text;
+  show(msg);
+}
+
+function setPanelMsg(text){
+  const msg = qs("panelMsg");
+  if (!msg) return;
+  if (!text){ hide(msg); msg.textContent=""; return; }
+  msg.textContent = text;
+  show(msg);
+}
+
+function setDebug(html){
+  const box = qs("debugBox");
+  if (box) box.innerHTML = html || "";
+}
+
+function setLoading(text){
+  const listBox = qs("listBox");
+  if (listBox) listBox.innerHTML = `<div class="text-center text-sm text-white/40 py-8">${escapeHtml(text)}</div>`;
+}
+
+// ---------------- Auth helpers ----------------
 async function getCurrentUserSafe(){
   const { data: sess } = await supa.auth.getSession();
   if (sess?.session?.user) return sess.session.user;
@@ -45,7 +68,8 @@ async function getCurrentUserSafe(){
   return usr?.user || null;
 }
 
-async function isAdminUser(user){
+async function checkIsAdmin(user){
+  // لازم يكون عندك سياسة SELECT على admins (admins_read_own_row)
   const { data, error } = await supa
     .from("admins")
     .select("user_id")
@@ -56,14 +80,15 @@ async function isAdminUser(user){
     console.error("[admins select error]", error);
     return { ok: false, reason: `admins select error: ${error.message}` };
   }
-  return { ok: !!data, reason: data ? "" : "not in admins table" };
+  if (!data) return { ok: false, reason: "not found in admins table" };
+  return { ok: true, reason: "" };
 }
 
-async function refreshSessionUI(){
-  const loginCard = document.getElementById("loginCard");
-  const adminPanel = document.getElementById("adminPanel");
-  const logoutBtn = document.getElementById("logoutBtn");
-  const whoami = document.getElementById("whoami");
+async function refreshUI(){
+  const loginCard = qs("loginCard");
+  const adminPanel = qs("adminPanel");
+  const logoutBtn = qs("logoutBtn");
+  const whoami = qs("whoami");
 
   const user = await getCurrentUserSafe();
 
@@ -74,30 +99,35 @@ async function refreshSessionUI(){
 
   if (!user){
     show(loginCard); hide(adminPanel); hide(logoutBtn);
+    setLoginMsg("");
+    setPanelMsg("");
     return;
   }
 
-  const adminCheck = await isAdminUser(user);
+  const adminCheck = await checkIsAdmin(user);
   if (!adminCheck.ok){
     show(loginCard); hide(adminPanel); hide(logoutBtn);
-    setMsg("هذا الحساب ليس ضمن الأدمن المصرّح لهم. (" + adminCheck.reason + ")");
-    await supa.auth.signOut();
+    setLoginMsg("هذا الحساب ليس ضمن الأدمن المصرّح لهم. (" + adminCheck.reason + ")");
+    // لا نعمل signOut إجباري هنا، فقط نوضح السبب
     return;
   }
 
   hide(loginCard); show(adminPanel); show(logoutBtn);
-  setMsg("");
+  setLoginMsg("");
+  setPanelMsg("");
+
   if (whoami) whoami.textContent = `مرحباً: ${user.email} — UID: ${user.id}`;
 
   await loadAllRows();
 }
 
-// ---------- data ----------
+// ---------------- Data rendering ----------------
 function rowCard(row){
   const subject = escapeHtml(row.subject || "");
   const note = row.note ? escapeHtml(row.note) : "";
   const status = row.status || "";
   const url = row.file_url || "#";
+  const created = row.created_at ? new Date(row.created_at).toLocaleString("ar-SA") : "";
 
   const badge =
     status === "approved"
@@ -112,6 +142,9 @@ function rowCard(row){
     ? `<button data-action="pending" data-id="${row.id}" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">إرجاع Pending</button>`
     : "";
 
+  const deleteBtn =
+    `<button data-action="delete" data-id="${row.id}" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black border border-red-500/30 text-red-200/90 hover:bg-red-500/10">حذف</button>`;
+
   return `
     <div class="btn-ghost rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
       <div class="text-right">
@@ -120,25 +153,28 @@ function rowCard(row){
           ${badge}
         </div>
         ${note ? `<div class="text-[11px] text-white/40">${note}</div>` : ""}
+        <div class="text-[10px] text-white/25 mt-1">${escapeHtml(created)}</div>
       </div>
 
-      <div class="flex flex-wrap gap-2">
+      <div class="flex flex-wrap gap-2 justify-start sm:justify-end">
         <a class="btn-ghost px-4 py-2 rounded-xl text-xs font-black" href="${url}" target="_blank" rel="noopener noreferrer">فتح</a>
         ${approveBtn}
         ${pendingBtn}
+        ${deleteBtn}
       </div>
     </div>
   `;
 }
 
 function renderList(){
-  const listBox = document.getElementById("listBox");
-  const emptyBox = document.getElementById("emptyBox");
-  const countBadge = document.getElementById("countBadge");
-  const q = (document.getElementById("searchBox")?.value || "").trim().toLowerCase();
+  const listBox = qs("listBox");
+  const emptyBox = qs("emptyBox");
+  const countBadge = qs("countBadge");
+  const q = (qs("searchBox")?.value || "").trim().toLowerCase();
 
-  let rows = allRows;
-  if (currentFilter !== "all") rows = rows.filter(r => r.status === currentFilter);
+  let rows = allRows.slice();
+
+  if (currentFilter !== "all") rows = rows.filter(r => (r.status || "") === currentFilter);
   if (q) rows = rows.filter(r => (r.subject || "").toLowerCase().includes(q));
 
   if (countBadge) countBadge.textContent = String(rows.length);
@@ -148,29 +184,30 @@ function renderList(){
     show(emptyBox);
     return;
   }
-
   hide(emptyBox);
   if (listBox) listBox.innerHTML = rows.map(rowCard).join("");
 }
 
+// ---------------- DB ops ----------------
 async function loadAllRows(){
-  const listBox = document.getElementById("listBox");
-  if (listBox) listBox.innerHTML = `<div class="text-center text-sm text-white/40 py-8">جاري التحميل...</div>`;
+  setLoading("جاري تحميل البيانات...");
 
   const { data, error } = await supa
     .from("resources")
     .select("id, subject, note, file_url, status, created_at")
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(300);
 
   if (error){
     console.error("[resources select error]", error);
-    if (listBox) listBox.innerHTML = `<div class="text-center text-sm text-red-200/80 py-8">فشل تحميل الموارد: ${escapeHtml(error.message)}</div>`;
+    setLoading("فشل تحميل البيانات: " + error.message);
+    setPanelMsg("مشكلة SELECT على resources: " + error.message);
     allRows = [];
     return;
   }
 
   allRows = data || [];
+  setPanelMsg("");
   renderList();
 }
 
@@ -188,58 +225,72 @@ async function updateStatus(id, status){
   return true;
 }
 
-// ---------- wiring ----------
-document.addEventListener("DOMContentLoaded", async () => {
-  // Login submit
-  document.getElementById("loginForm")?.addEventListener("submit", async (e) => {
+async function deleteRow(id){
+  const { error } = await supa
+    .from("resources")
+    .delete()
+    .eq("id", id);
+
+  if (error){
+    console.error("[resources delete error]", error);
+    alert("فشل الحذف: " + error.message);
+    return false;
+  }
+  return true;
+}
+
+// ---------------- Wiring ----------------
+document.addEventListener("DOMContentLoaded", async ()=>{
+  // Login
+  qs("loginForm")?.addEventListener("submit", async (e)=>{
     e.preventDefault();
-    setMsg("");
+    setLoginMsg("");
 
-    const email = document.getElementById("email")?.value?.trim();
-    const password = document.getElementById("password")?.value;
+    const email = qs("email")?.value?.trim();
+    const password = qs("password")?.value;
 
-    if (!email || !password) {
-      setMsg("أدخل الإيميل والباسوورد.");
+    if (!email || !password){
+      setLoginMsg("أدخل الإيميل وكلمة المرور.");
       return;
     }
 
-    setMsg("جاري تسجيل الدخول...");
+    setLoginMsg("جاري تسجيل الدخول...");
 
     const { error } = await supa.auth.signInWithPassword({ email, password });
 
     if (error){
       console.error("[signIn error]", error);
-      setMsg("فشل تسجيل الدخول: " + error.message);
+      setLoginMsg("فشل تسجيل الدخول: " + error.message);
       return;
     }
 
-    setMsg("");
-    await refreshSessionUI();
+    setLoginMsg("");
+    await refreshUI();
   });
 
   // Logout
-  document.getElementById("logoutBtn")?.addEventListener("click", async () => {
+  qs("logoutBtn")?.addEventListener("click", async ()=>{
     await supa.auth.signOut();
-    await refreshSessionUI();
+    await refreshUI();
   });
 
-  // Refresh buttons
-  document.getElementById("refreshBtn")?.addEventListener("click", refreshSessionUI);
-  document.getElementById("refreshBtn2")?.addEventListener("click", refreshSessionUI);
+  // Refresh
+  qs("refreshBtn")?.addEventListener("click", refreshUI);
+  qs("refreshBtn2")?.addEventListener("click", refreshUI);
 
   // Filters
-  document.querySelectorAll(".filterBtn").forEach(btn => {
-    btn.addEventListener("click", () => {
+  document.querySelectorAll(".filterBtn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
       currentFilter = btn.getAttribute("data-filter") || "pending";
       renderList();
     });
   });
 
   // Search
-  document.getElementById("searchBox")?.addEventListener("input", renderList);
+  qs("searchBox")?.addEventListener("input", renderList);
 
   // Actions
-  document.getElementById("listBox")?.addEventListener("click", async (e) => {
+  qs("listBox")?.addEventListener("click", async (e)=>{
     const t = e.target;
     if (!(t instanceof HTMLElement)) return;
 
@@ -259,11 +310,18 @@ document.addEventListener("DOMContentLoaded", async () => {
       const ok = await updateStatus(id, "pending");
       if (ok) await loadAllRows();
     }
+
+    if (action === "delete"){
+      if (!confirm("أكيد تبغى تحذف السجل؟")) return;
+      const ok = await deleteRow(id);
+      if (ok) await loadAllRows();
+    }
   });
 
-  supa.auth.onAuthStateChange(async () => {
-    await refreshSessionUI();
+  // Auth state change
+  supa.auth.onAuthStateChange(async ()=>{
+    await refreshUI();
   });
 
-  await refreshSessionUI();
+  await refreshUI();
 });
