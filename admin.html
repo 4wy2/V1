@@ -5,15 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>لوحة الأدمن</title>
 
+  <meta name="robots" content="noindex,nofollow">
+
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    :root{ --stroke: rgba(255,255,255,.10); }
+    :root{
+      --bg0:#060714; --bg1:#0B1026;
+      --stroke: rgba(255,255,255,.10);
+      --text: rgba(255,255,255,.92);
+    }
     body{
       font-family: Cairo, system-ui;
-      background: linear-gradient(180deg,#060714,#0B1026);
-      color:#fff; min-height:100vh;
+      background:
+        radial-gradient(900px 380px at 20% 10%, rgba(79,70,229,.20), transparent 60%),
+        radial-gradient(800px 340px at 80% 25%, rgba(6,182,212,.14), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      color: var(--text);
+      min-height: 100vh;
     }
     .glass{ background: rgba(15,23,42,.72); backdrop-filter: blur(10px); border: 1px solid var(--stroke); }
     .btn-brand{
@@ -23,31 +33,48 @@
     .btn-brand:hover{ transform: translateY(-1px); filter: brightness(1.03); }
     .btn-ghost{ border: 1px solid var(--stroke); background: rgba(255,255,255,0.02); }
     .btn-ghost:hover{ background: rgba(255,255,255,0.06); }
+    input{
+      width:100%;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #fff;
+      outline: none;
+    }
   </style>
 </head>
 
 <body class="p-4 sm:p-8">
+  <div class="max-w-5xl mx-auto">
 
-  <div class="max-w-4xl mx-auto">
+    <!-- HEADER -->
+    <div class="glass rounded-3xl p-5 sm:p-6 mb-6 flex items-center justify-between">
+      <div class="text-right">
+        <div class="text-2xl font-black">لوحة الأدمن</div>
+        <div class="text-[12px] text-white/45">EE Resources Moderation</div>
+      </div>
+      <div class="flex gap-2">
+        <button id="hardRefreshHint" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">
+          إذا ما يحدث: Ctrl+Shift+R
+        </button>
+      </div>
+    </div>
 
-    <!-- Login Card -->
+    <!-- LOGIN CARD -->
     <div id="loginCard" class="glass rounded-3xl p-6 sm:p-8">
-      <div class="flex items-center justify-between gap-4 mb-6">
+      <div class="flex items-center justify-between gap-3 mb-6">
         <div class="text-right">
-          <h1 class="text-2xl font-black">لوحة الأدمن</h1>
-          <p class="text-sm text-white/50">سجّل دخولك</p>
+          <h1 class="text-xl sm:text-2xl font-black">تسجيل دخول الأدمن</h1>
+          <p class="text-[12px] text-white/45 mt-1">بريد + كلمة مرور (Supabase Auth)</p>
         </div>
         <button id="refreshBtn" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">تحديث</button>
       </div>
 
       <form id="loginForm" class="space-y-3">
-        <input id="email" type="email" required
-          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none"
-          placeholder="Email" />
-        <input id="password" type="password" required
-          class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm outline-none"
-          placeholder="Password" />
-        <button id="loginBtn" type="submit" class="btn-brand w-full py-3 rounded-xl font-black text-sm">
+        <input id="email" type="email" autocomplete="username" placeholder="Email" required />
+        <input id="password" type="password" autocomplete="current-password" placeholder="Password" required />
+        <button id="loginBtn" type="submit" class="btn-brand w-full py-3 rounded-2xl font-black">
           دخول
         </button>
       </form>
@@ -56,31 +83,32 @@
       <div id="debugBox" class="mt-4 text-[12px] text-white/35"></div>
     </div>
 
-    <!-- Admin Panel -->
+    <!-- ADMIN PANEL -->
     <div id="adminPanel" class="hidden glass rounded-3xl p-6 sm:p-8 mt-6">
-      <div class="flex items-center justify-between gap-4 mb-4">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div class="text-right">
           <h2 class="text-xl font-black">إدارة الملفات</h2>
-          <p id="whoami" class="text-[12px] text-white/45"></p>
+          <p id="whoami" class="text-[12px] text-white/45 mt-1"></p>
         </div>
 
-        <div class="flex items-center gap-2">
-          <button id="logoutBtn" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">تسجيل خروج</button>
+        <div class="flex gap-2">
           <button id="refreshBtn2" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">تحديث</button>
+          <button id="logoutBtn" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black">تسجيل خروج</button>
         </div>
       </div>
 
-      <div class="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-4">
-        <div class="flex gap-2 flex-wrap">
+      <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between mb-4">
+        <div class="flex flex-wrap gap-2">
           <button class="filterBtn btn-ghost px-4 py-2 rounded-xl text-xs font-black" data-filter="pending">Pending</button>
           <button class="filterBtn btn-ghost px-4 py-2 rounded-xl text-xs font-black" data-filter="approved">Approved</button>
           <button class="filterBtn btn-ghost px-4 py-2 rounded-xl text-xs font-black" data-filter="all">All</button>
           <span class="text-[12px] text-white/45 self-center">العدد: <b id="countBadge">0</b></span>
         </div>
 
-        <input id="searchBox" class="w-full sm:w-64 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm outline-none"
-          placeholder="بحث باسم المادة..." />
+        <input id="searchBox" placeholder="بحث باسم المادة..." class="md:w-72" />
       </div>
+
+      <div id="panelMsg" class="hidden mb-4 text-sm text-amber-200/90"></div>
 
       <div id="emptyBox" class="hidden text-center text-sm text-white/40 py-10">لا توجد عناصر</div>
       <div id="listBox" class="space-y-3"></div>
@@ -88,7 +116,7 @@
 
   </div>
 
-  <!-- مهم: لازم يكون RELATIVE مو /assets -->
-  <script src="assets/js/admin.js?v=200"></script>
+  <!-- مهم: RELATIVE PATH لأن الصفحة داخل /V1/ -->
+  <script src="assets/js/admin.js?v=9999"></script>
 </body>
 </html>
