@@ -5,7 +5,15 @@ const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
 
-const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// مهم: storageKey ثابت للمشروع (عشان ما يلخبطك المسار /V1)
+const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storageKey: "ee_admin_auth_v1",
+  },
+});
 
 let currentFilter = "pending";
 let allRows = [];
@@ -22,7 +30,6 @@ function escapeHtml(str) {
     "'": "&#039;",
   }[s]));
 }
-
 function show(el) { el.classList.remove("hidden"); }
 function hide(el) { el.classList.add("hidden"); }
 
@@ -51,7 +58,7 @@ function rowCard(row) {
       ? `<button data-action="approve" data-id="${row.id}" class="btn-brand px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap">اعتماد</button>`
       : "";
 
-  const rejectBtn =
+  const backToPendingBtn =
     status !== "pending"
       ? `<button data-action="pending" data-id="${row.id}" class="btn-ghost px-4 py-2 rounded-xl text-xs font-black whitespace-nowrap">إرجاع Pending</button>`
       : "";
@@ -76,7 +83,7 @@ function rowCard(row) {
           فتح الملف
         </a>
         ${approveBtn}
-        ${rejectBtn}
+        ${backToPendingBtn}
         ${delBtn}
       </div>
     </div>
@@ -93,12 +100,8 @@ function renderList() {
 
   let rows = allRows;
 
-  if (currentFilter !== "all") {
-    rows = rows.filter(r => r.status === currentFilter);
-  }
-  if (q) {
-    rows = rows.filter(r => (r.subject || "").toLowerCase().includes(q));
-  }
+  if (currentFilter !== "all") rows = rows.filter(r => r.status === currentFilter);
+  if (q) rows = rows.filter(r => (r.subject || "").toLowerCase().includes(q));
 
   countBadge.textContent = String(rows.length);
 
@@ -113,21 +116,32 @@ function renderList() {
 }
 
 // ===============================
-// Auth + Admin check
+// Robust admin check (no timing bugs)
 // ===============================
-async function isAdmin() {
-  // نتحقق من كون المستخدم موجود داخل جدول admins
-  const { data: userRes } = await supa.auth.getUser();
-  const user = userRes?.user;
-  if (!user) return false;
+async function getCurrentUserSafe() {
+  // 1) session
+  const { data: sess } = await supa.auth.getSession();
+  if (sess?.session?.user) return sess.session.user;
 
+  // 2) fallback getUser
+  const { data: usr } = await supa.auth.getUser();
+  return usr?.user || null;
+}
+
+async function isAdminUser(user) {
+  if (!user?.id) return false;
+
+  // أهم نقطة: فلترة على user_id + single()
   const { data, error } = await supa
     .from("admins")
     .select("user_id")
     .eq("user_id", user.id)
     .maybeSingle();
 
-  if (error) return false;
+  if (error) {
+    console.error("admins select error:", error);
+    return false;
+  }
   return !!data;
 }
 
@@ -136,20 +150,19 @@ async function refreshSessionUI() {
   const adminPanel = document.getElementById("adminPanel");
   const logoutBtn = document.getElementById("logoutBtn");
 
-  const { data } = await supa.auth.getSession();
-  const session = data?.session;
+  const user = await getCurrentUserSafe();
 
-  if (!session) {
+  if (!user) {
     show(loginCard); hide(adminPanel); hide(logoutBtn);
     return;
   }
 
-  const ok = await isAdmin();
+  const ok = await isAdminUser(user);
   if (!ok) {
-    // مسجل دخول لكن مو أدمن → نسجله خروج
-    await supa.auth.signOut();
+    // لا نسوي signOut مباشرة إلا بعد ما نوضح—لكن نسويه بالنهاية لتصفير الجلسة
     show(loginCard); hide(adminPanel); hide(logoutBtn);
     setMsg("هذا الحساب ليس ضمن الأدمن المصرّح لهم.");
+    await supa.auth.signOut();
     return;
   }
 
@@ -199,8 +212,6 @@ async function setStatus(id, status) {
 }
 
 async function deleteRow(id) {
-  // حذف السجل من DB فقط (والملف يبقى في Storage)
-  // إذا تبي حذف الملف من Storage بعدين نضيفه (يتطلب Policy delete على storage.objects)
   const { error } = await supa
     .from("resources")
     .delete()
@@ -215,12 +226,11 @@ async function deleteRow(id) {
 }
 
 // ===============================
-// Event wiring
+// Wiring
 // ===============================
 document.addEventListener("DOMContentLoaded", async () => {
-  // Login
-  const loginForm = document.getElementById("loginForm");
-  loginForm?.addEventListener("submit", async (e) => {
+  // login
+  document.getElementById("loginForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     setMsg("");
 
@@ -238,29 +248,29 @@ document.addEventListener("DOMContentLoaded", async () => {
     await refreshSessionUI();
   });
 
-  // Logout
+  // logout
   document.getElementById("logoutBtn")?.addEventListener("click", async () => {
     await supa.auth.signOut();
     await refreshSessionUI();
   });
 
-  // Refresh
+  // refresh
   document.getElementById("refreshBtn")?.addEventListener("click", async () => {
     await refreshSessionUI();
   });
 
-  // Filter buttons
+  // filters
   document.querySelectorAll(".filterBtn").forEach(btn => {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", () => {
       currentFilter = btn.getAttribute("data-filter") || "pending";
       renderList();
     });
   });
 
-  // Search
+  // search
   document.getElementById("searchBox")?.addEventListener("input", renderList);
 
-  // Delegate actions
+  // actions
   document.getElementById("listBox")?.addEventListener("click", async (e) => {
     const t = e.target;
     if (!(t instanceof HTMLElement)) return;
@@ -275,18 +285,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (action === "approve") {
       const ok = await setStatus(id, "approved");
       if (ok) await loadAllRows();
-    }
-
-    if (action === "pending") {
+    } else if (action === "pending") {
       const ok = await setStatus(id, "pending");
       if (ok) await loadAllRows();
-    }
-
-    if (action === "delete") {
+    } else if (action === "delete") {
       if (!confirm("أكيد تبغى تحذف السجل؟")) return;
       const ok = await deleteRow(id);
       if (ok) await loadAllRows();
     }
+  });
+
+  // مهم: أيضاً نراقب تغيّر حالة الدخول
+  supa.auth.onAuthStateChange(async () => {
+    await refreshSessionUI();
   });
 
   // initial
