@@ -19,6 +19,7 @@
     .btn{ border-radius: 16px; padding: 10px 14px; font-weight: 800; }
   </style>
 </head>
+
 <body class="min-h-screen">
   <div class="max-w-5xl mx-auto p-6">
 
@@ -35,13 +36,20 @@
         <input id="password" type="password" placeholder="كلمة المرور" class="input w-full">
       </div>
 
-      <div class="mt-4 flex gap-3">
+      <div class="mt-4 flex flex-wrap gap-3">
         <button id="loginBtn" class="btn bg-indigo-600">دخول</button>
         <button id="logoutBtn" class="btn bg-white/10 hidden">تسجيل خروج</button>
         <button id="refreshBtn" class="btn bg-white/10 hidden">تحديث</button>
+
+        <!-- زر جديد: Reset -->
+        <button id="resetBtn" class="btn bg-rose-600/80">إعادة ضبط</button>
       </div>
 
       <p id="loginMsg" class="mt-3 text-sm text-white/60"></p>
+
+      <p class="mt-2 text-xs text-white/40">
+        إذا واجهت Invalid JWT اضغط "إعادة ضبط" ثم سجّل دخول من جديد.
+      </p>
     </div>
 
     <div id="panel" class="hidden">
