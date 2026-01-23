@@ -2,6 +2,8 @@
 // Supabase Client
 // ===============================
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
+
+// لازم يكون anon public JWT (eyJ...) من Settings → API
 const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
 
@@ -12,9 +14,12 @@ const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // ===============================
 const emailEl = document.getElementById("email");
 const passEl = document.getElementById("password");
+
 const loginBtn = document.getElementById("loginBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const refreshBtn = document.getElementById("refreshBtn");
+const resetBtn = document.getElementById("resetBtn");
+
 const loginMsg = document.getElementById("loginMsg");
 const panel = document.getElementById("panel");
 
@@ -45,12 +50,15 @@ function toTagsArray(tagsStr) {
   return raw.split(",").map(t => t.trim()).filter(Boolean);
 }
 
-function showBox(title, detail) {
+function showErrorBox(title, detail) {
   listEl.innerHTML = `
     <div class="glass rounded-3xl p-5 border border-rose-500/20">
       <div class="text-right">
         <div class="font-black text-rose-200">${escapeHtml(title)}</div>
         <div class="mt-2 text-sm text-white/70 whitespace-pre-wrap">${escapeHtml(detail)}</div>
+        <div class="mt-3 text-xs text-white/40">
+          جرّب: اضغط "إعادة ضبط" ثم سجّل دخول من جديد.
+        </div>
       </div>
     </div>
   `;
@@ -62,7 +70,6 @@ function showBox(title, detail) {
 async function callFilesApi(action, payload) {
   const url = `${SUPABASE_URL}/functions/v1/files-api`;
 
-  // Session token (لو أنت مسجل دخول)
   const { data: sess } = await supa.auth.getSession();
   const token = sess?.session?.access_token;
 
@@ -71,7 +78,6 @@ async function callFilesApi(action, payload) {
     "apikey": SUPABASE_ANON_KEY,
   };
 
-  // للـ admin actions لازم Authorization
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const r = await fetch(url, {
@@ -82,24 +88,22 @@ async function callFilesApi(action, payload) {
 
   const text = await r.text();
 
-  // حاول نفهمه JSON
   let body = null;
   try { body = JSON.parse(text); } catch {}
 
   if (!r.ok) {
-    const msg =
-      (body && (body.error || body.message)) ? (body.error || body.message) : text;
+    const msg = (body && (body.error || body.message))
+      ? (body.error || body.message)
+      : text;
     throw new Error(`HTTP ${r.status}: ${msg}`);
   }
 
-  // حتى لو OK، قد يرجع {error:...}
   if (body && body.error) throw new Error(String(body.error));
-
   return body ?? {};
 }
 
 // ===============================
-// Auth + UI
+// UI Session
 // ===============================
 async function refreshSessionUI() {
   const { data } = await supa.auth.getSession();
@@ -121,6 +125,9 @@ async function refreshSessionUI() {
   }
 }
 
+// ===============================
+// Auth Buttons
+// ===============================
 loginBtn.addEventListener("click", async () => {
   loginMsg.textContent = "جاري تسجيل الدخول...";
   const email = (emailEl.value || "").trim();
@@ -144,8 +151,16 @@ refreshBtn.addEventListener("click", async () => {
   await loadAll();
 });
 
+// زر إعادة ضبط (بدون Console)
+resetBtn.addEventListener("click", async () => {
+  try { await supa.auth.signOut(); } catch {}
+  try { localStorage.clear(); } catch {}
+  try { sessionStorage.clear(); } catch {}
+  location.reload();
+});
+
 // ===============================
-// Load once
+// Load
 // ===============================
 async function loadAll() {
   listEl.innerHTML = `<div class="text-center text-sm text-white/60">جاري تحميل الملفات...</div>`;
@@ -163,16 +178,16 @@ async function loadAll() {
   } catch (e) {
     console.error(e);
     ALL_ITEMS = [];
-    showBox("تعذر التحميل من Edge Function", e?.message || String(e));
+    showErrorBox("تعذر التحميل من Edge Function", e?.message || String(e));
   }
 }
 
 // ===============================
-// Render (local filter/sort/search)
+// Render
 // ===============================
 function renderList() {
   if (!Array.isArray(ALL_ITEMS) || ALL_ITEMS.length === 0) {
-    listEl.innerHTML = `<div class="text-center text-sm text-white/50">لا توجد بيانات. اضغط "تحديث".</div>`;
+    listEl.innerHTML = `<div class="text-center text-sm text-white/50">لا توجد بيانات.</div>`;
     return;
   }
 
@@ -232,7 +247,7 @@ function drawItems(items) {
             ${r.download_url ? `
               <a class="inline-block mt-3 text-sm underline text-indigo-300"
                  href="${r.download_url}" target="_blank" rel="noopener noreferrer">تحميل</a>
-            ` : `<div class="text-xs text-white/40 mt-3">لا يوجد رابط تحميل (قد يكون file_path ناقص)</div>`}
+            ` : `<div class="text-xs text-white/40 mt-3">لا يوجد رابط تحميل</div>`}
           </div>
 
           <div class="flex flex-col gap-2 min-w-[180px]">
@@ -277,7 +292,7 @@ pubFilterEl.addEventListener("change", renderList);
 sortEl.addEventListener("change", renderList);
 
 // ===============================
-// Actions (Update/Delete)
+// Actions
 // ===============================
 document.addEventListener("click", async (e) => {
   const btn = e.target.closest(".btnAction");
