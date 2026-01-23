@@ -1,121 +1,78 @@
-// admin.js - النسخة الاحترافية V2
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
-
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let allRows = [];
+let allData = [];
 let currentFilter = 'pending';
 
-// --- وظائف التحكم في البيانات ---
-
-// 1. تغيير حالة الملف (أهم وظيفة سألت عنها)
-async function updateStatus(id, newStatus) {
-    const { error } = await supa
-        .from("resources")
-        .update({ status: newStatus })
-        .eq("id", id);
-
-    if (error) {
-        alert("فشل التحديث: " + error.message);
-    } else {
-        console.log(`Updated ${id} to ${newStatus}`);
-        await loadResources(); // تحديث القائمة فوراً
-    }
-}
-
-// 2. جلب البيانات من السيرفر
+// تحميل البيانات
 async function loadResources() {
-    const { data, error } = await supa
-        .from("resources")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-    if (error) {
-        alert("خطأ في جلب البيانات: " + error.message);
-        return;
-    }
-
-    allRows = data;
-    renderAll();
+    const { data, error } = await supa.from('resources').select('*').order('created_at', { ascending: false });
+    if (error) return console.error(error);
+    allData = data;
+    updateStats();
+    render();
 }
 
-// 3. عرض البيانات في الصفحة بشكل جميل
-function renderAll() {
-    const list = document.getElementById("listBox");
-    const search = document.getElementById("searchBox").value.toLowerCase();
+// تحديث الإحصائيات
+function updateStats() {
+    document.getElementById('totalCount').textContent = allData.length;
+    document.getElementById('pendingCount').textContent = allData.filter(r => r.status === 'pending').length;
+    document.getElementById('approvedCount').textContent = allData.filter(r => r.status === 'approved').length;
+}
+
+// تغيير الحالة (مهم جداً)
+window.updateStatus = async (id, status) => {
+    const { error } = await supa.from('resources').update({ status }).eq('id', id);
+    if (error) alert("فشل التحديث: " + error.message);
+    else await loadResources();
+};
+
+window.deleteRow = async (id) => {
+    if(!confirm("حذف نهائي؟")) return;
+    await supa.from('resources').delete().eq('id', id);
+    await loadResources();
+};
+
+window.setFilter = (f) => {
+    currentFilter = f;
+    render();
+};
+
+function render() {
+    const list = document.getElementById('listBox');
+    const search = document.getElementById('searchBox').value.toLowerCase();
     
-    // تصفية البيانات
-    const filtered = allRows.filter(r => {
-        const matchesTab = currentFilter === 'all' || r.status === currentFilter;
-        const matchesSearch = r.subject?.toLowerCase().includes(search);
-        return matchesTab && matchesSearch;
+    const filtered = allData.filter(r => {
+        const mFilter = currentFilter === 'all' || r.status === currentFilter;
+        const mSearch = r.subject.toLowerCase().includes(search);
+        return mFilter && mSearch;
     });
 
-    // تحديث العدادات
-    document.getElementById("countBadge").textContent = filtered.length;
-
-    if (filtered.length === 0) {
-        list.innerHTML = `<div class="py-20 text-center opacity-30">لا توجد ملفات حالياً</div>`;
-        return;
-    }
-
-    list.innerHTML = filtered.map(row => `
-        <div class="glass p-5 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4 border border-white/5 hover:border-white/20 transition-all">
-            <div class="text-right">
-                <span class="text-[10px] uppercase tracking-widest opacity-40 font-bold">${row.id}</span>
-                <h3 class="font-black text-lg text-white/90">${row.subject}</h3>
-                <p class="text-sm text-white/50">${row.note || 'لا توجد ملاحظات'}</p>
-                <div class="mt-2 flex gap-2 items-center">
-                    <span class="status-pill ${row.status}">${row.status}</span>
-                    <span class="text-[10px] opacity-30">${new Date(row.created_at).toLocaleDateString('ar-SA')}</span>
-                </div>
+    list.innerHTML = filtered.map(r => `
+        <div class="glass p-6 rounded-[2rem] flex flex-col md:flex-row justify-between items-center">
+            <div class="text-right w-full">
+                <h3 class="font-bold text-lg">${r.subject}</h3>
+                <p class="text-white/40 text-sm">${r.note || ''}</p>
+                <div class="mt-2"><span class="px-3 py-1 rounded-full text-[10px] font-bold status-${r.status}">${r.status}</span></div>
             </div>
-            
-            <div class="flex flex-wrap gap-2">
-                <a href="${row.file_url}" target="_blank" class="btn-action bg-white/5 text-white">معاينة</a>
-                
-                ${row.status !== 'approved' ? 
-                    `<button onclick="updateStatus(${row.id}, 'approved')" class="btn-action bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">اعتماد ✅</button>` : ''}
-                
-                ${row.status !== 'pending' ? 
-                    `<button onclick="updateStatus(${row.id}, 'pending')" class="btn-action bg-amber-500/20 text-amber-400 border border-amber-500/30">تعليق ⏳</button>` : ''}
-                
-                <button onclick="deleteRow(${row.id})" class="btn-action bg-red-500/20 text-red-400 border border-red-500/30">حذف 🗑️</button>
+            <div class="flex gap-2 mt-4 md:mt-0">
+                <a href="${r.file_url}" target="_blank" class="px-4 py-2 glass rounded-xl text-xs">فتح</a>
+                ${r.status === 'pending' ? `<button onclick="updateStatus(${r.id}, 'approved')" class="px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-xl text-xs border border-emerald-500/30">اعتماد</button>` : ''}
+                ${r.status === 'approved' ? `<button onclick="updateStatus(${r.id}, 'pending')" class="px-4 py-2 bg-amber-500/20 text-amber-400 rounded-xl text-xs border border-amber-500/30">إرجاع</button>` : ''}
+                <button onclick="deleteRow(${r.id})" class="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl text-xs border border-red-500/30">حذف</button>
             </div>
         </div>
-    `).join("");
+    `).join('');
 }
 
-// 4. حذف ملف
-async function deleteRow(id) {
-    if (!confirm("هل أنت متأكد من حذف هذا الملف نهائياً؟")) return;
-    const { error } = await supa.from("resources").delete().eq("id", id);
-    if (error) alert(error.message);
-    else await loadResources();
-}
-
-// جعل الوظائف متاحة في الـ HTML
-window.updateStatus = updateStatus;
-window.deleteRow = deleteRow;
-
-// --- عند التحميل ---
-document.addEventListener("DOMContentLoaded", () => {
-    // ربط الفلاتر
-    document.querySelectorAll(".filterBtn").forEach(btn => {
-        btn.onclick = () => {
-            currentFilter = btn.dataset.filter;
-            document.querySelectorAll(".filterBtn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            renderAll();
-        };
-    });
-
-    document.getElementById("searchBox").oninput = renderAll;
-    
-    // التحقق من الجلسة
-    supa.auth.getUser().then(({data}) => {
-        if (data.user) loadResources();
-        else window.location.href = "login.html"; // افترضنا وجود صفحة دخول
-    });
+// البدء
+document.addEventListener('DOMContentLoaded', async () => {
+    const { data: { user } } = await supa.auth.getUser();
+    if (!user) {
+        window.location.href = 'index.html'; // أو صفحة الدخول
+    } else {
+        document.getElementById('whoami').textContent = `الأدمن: ${user.email}`;
+        loadResources();
+    }
 });
