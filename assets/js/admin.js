@@ -23,7 +23,6 @@ const pubFilterEl = document.getElementById("pubFilter");
 const sortEl = document.getElementById("sort");
 const listEl = document.getElementById("list");
 
-// كل البيانات اللي نحملها مرة وحدة
 let ALL_ITEMS = [];
 
 // ===============================
@@ -35,18 +34,15 @@ function escapeHtml(str) {
   }[s]));
 }
 
+function formatDate(dt) {
+  try { return dt ? new Date(dt).toLocaleString("ar-SA") : ""; }
+  catch { return String(dt || ""); }
+}
+
 function toTagsArray(tagsStr) {
   const raw = String(tagsStr || "").trim();
   if (!raw) return null;
   return raw.split(",").map(t => t.trim()).filter(Boolean);
-}
-
-function formatDate(dt) {
-  try {
-    return dt ? new Date(dt).toLocaleString("ar-SA") : "";
-  } catch {
-    return String(dt || "");
-  }
 }
 
 function showBox(title, detail) {
@@ -61,25 +57,45 @@ function showBox(title, detail) {
 }
 
 // ===============================
-// Call Edge Function
+// Edge Function call (FETCH) ✅
 // ===============================
 async function callFilesApi(action, payload) {
-  const res = await supa.functions.invoke("files-api", {
-    body: { action, payload: payload ?? {} }
+  const url = `${SUPABASE_URL}/functions/v1/files-api`;
+
+  // Session token (لو أنت مسجل دخول)
+  const { data: sess } = await supa.auth.getSession();
+  const token = sess?.session?.access_token;
+
+  const headers = {
+    "Content-Type": "application/json",
+    "apikey": SUPABASE_ANON_KEY,
+  };
+
+  // للـ admin actions لازم Authorization
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const r = await fetch(url, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ action, payload: payload ?? {} }),
   });
 
-  // res = { data, error }
-  if (res.error) {
-    // خلي الرسالة واضحة بدل "non-2xx" فقط
-    const ctx = res.error.context ? `\ncontext: ${JSON.stringify(res.error.context)}` : "";
-    throw new Error(`invoke error: ${res.error.message || res.error}${ctx}`);
+  const text = await r.text();
+
+  // حاول نفهمه JSON
+  let body = null;
+  try { body = JSON.parse(text); } catch {}
+
+  if (!r.ok) {
+    const msg =
+      (body && (body.error || body.message)) ? (body.error || body.message) : text;
+    throw new Error(`HTTP ${r.status}: ${msg}`);
   }
 
-  if (res.data && res.data.error) {
-    throw new Error(`function error: ${res.data.error}`);
-  }
+  // حتى لو OK، قد يرجع {error:...}
+  if (body && body.error) throw new Error(String(body.error));
 
-  return res.data;
+  return body ?? {};
 }
 
 // ===============================
@@ -94,7 +110,7 @@ async function refreshSessionUI() {
     logoutBtn.classList.remove("hidden");
     refreshBtn.classList.remove("hidden");
     panel.classList.remove("hidden");
-    await loadAll(); // تحميل مرّة واحدة فقط
+    await loadAll();
   } else {
     loginMsg.textContent = "غير مسجل دخول.";
     logoutBtn.classList.add("hidden");
@@ -129,13 +145,12 @@ refreshBtn.addEventListener("click", async () => {
 });
 
 // ===============================
-// Load once (مهم)
+// Load once
 // ===============================
 async function loadAll() {
   listEl.innerHTML = `<div class="text-center text-sm text-white/60">جاري تحميل الملفات...</div>`;
 
   try {
-    // تحميل واحد فقط
     const data = await callFilesApi("admin_list_all", {});
     ALL_ITEMS = Array.isArray(data?.items) ? data.items : [];
 
@@ -144,7 +159,6 @@ async function loadAll() {
       return;
     }
 
-    // عرض بعد التحميل
     renderList();
   } catch (e) {
     console.error(e);
@@ -154,10 +168,9 @@ async function loadAll() {
 }
 
 // ===============================
-// Render (محلي: بحث + فلترة + ترتيب)
+// Render (local filter/sort/search)
 // ===============================
 function renderList() {
-  // لو ما فيه بيانات أساساً
   if (!Array.isArray(ALL_ITEMS) || ALL_ITEMS.length === 0) {
     listEl.innerHTML = `<div class="text-center text-sm text-white/50">لا توجد بيانات. اضغط "تحديث".</div>`;
     return;
@@ -169,11 +182,9 @@ function renderList() {
 
   let items = [...ALL_ITEMS];
 
-  // Public/Private filter
   if (pubFilter === "public") items = items.filter(i => i.is_public === true);
   if (pubFilter === "private") items = items.filter(i => i.is_public !== true);
 
-  // Search
   if (q) {
     items = items.filter(i => {
       const hay = [
@@ -186,14 +197,12 @@ function renderList() {
     });
   }
 
-  // Sort
   items.sort((a, b) => {
     const da = a?.created_at ? new Date(a.created_at).getTime() : 0;
     const db = b?.created_at ? new Date(b.created_at).getTime() : 0;
     return sort === "old" ? (da - db) : (db - da);
   });
 
-  // Draw
   drawItems(items);
 }
 
@@ -263,7 +272,6 @@ function drawItems(items) {
   }).join("");
 }
 
-// اربط التغييرات محلياً (بدون أي API calls)
 qEl.addEventListener("input", renderList);
 pubFilterEl.addEventListener("change", renderList);
 sortEl.addEventListener("change", renderList);
@@ -276,7 +284,7 @@ document.addEventListener("click", async (e) => {
   if (!btn) return;
 
   const action = btn.getAttribute("data-action");
-  const id = btn.getAttribute("data-id"); // ✅ string / uuid
+  const id = btn.getAttribute("data-id");
   if (!id) return;
 
   const oldText = btn.textContent;
@@ -287,14 +295,15 @@ document.addEventListener("click", async (e) => {
     if (action === "delete") {
       const ok = confirm("تأكيد حذف الملف؟ سيتم حذف السجل والملف من التخزين.");
       if (!ok) return;
-
       await callFilesApi("admin_delete", { id });
+    }
 
-    } else if (action === "toggle_public") {
+    if (action === "toggle_public") {
       const cur = btn.getAttribute("data-current") === "1";
       await callFilesApi("admin_update", { id, is_public: !cur });
+    }
 
-    } else if (action === "save") {
+    if (action === "save") {
       const catInput = document.querySelector(`input.cat[data-id="${CSS.escape(id)}"]`);
       const tagsInput = document.querySelector(`input.tags[data-id="${CSS.escape(id)}"]`);
 
@@ -304,9 +313,7 @@ document.addEventListener("click", async (e) => {
       await callFilesApi("admin_update", { id, category: category || null, tags: tagsArr });
     }
 
-    // بعد أي تعديل: نعيد تحميل البيانات مرة واحدة
     await loadAll();
-
   } catch (err) {
     console.error(err);
     alert("خطأ: " + (err?.message || err));
@@ -316,5 +323,5 @@ document.addEventListener("click", async (e) => {
   }
 });
 
-// تشغيل
+// Start
 refreshSessionUI();
