@@ -31,42 +31,61 @@ function renderList() {
     document.getElementById("approvedCount").textContent = allRows.filter(r => r.status === 'approved').length;
 
     container.innerHTML = filtered.map(row => `
-        <div class="glass-card p-6 flex flex-col justify-between border-r-4 ${row.status === 'approved' ? 'border-emerald-500' : 'border-amber-500'}">
-            <div>
-                <div class="flex justify-between items-start mb-4">
-                    <h3 class="font-black text-lg">${row.subject}</h3>
-                    <span class="text-[10px] bg-white/10 px-2 py-1 rounded italic text-gray-400">${row.processed_by || 'غير مفروز'}</span>
+        <tr class="archive-row">
+            <td class="px-4 py-3 td-first">
+                <input type="text" onchange="updateData(${row.id}, {subject: this.value})" 
+                    class="bg-transparent border-none p-0 w-full font-bold text-slate-200" value="${row.subject}">
+                <div class="text-[10px] text-slate-500 mt-1">${new Date(row.created_at).toLocaleDateString()}</div>
+            </td>
+            <td class="px-4 py-3">
+                <span class="status-badge ${row.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}">
+                    ${row.status === 'approved' ? 'تم الاعتماد' : 'قيد المراجعة'}
+                </span>
+            </td>
+            <td class="px-4 py-3">
+                <textarea onchange="updateData(${row.id}, {admin_note: this.value})" 
+                    class="w-full h-8 min-h-[32px] p-1 rounded border-none bg-slate-800/50 resize-y" 
+                    placeholder="ملاحظة...">${row.admin_note || ''}</textarea>
+            </td>
+            <td class="px-4 py-3 text-center text-[11px] text-slate-400 font-mono">
+                ${row.processed_by ? row.processed_by.split('@')[0] : '--'}
+            </td>
+            <td class="px-4 py-3 td-last text-center">
+                <div class="flex gap-2 justify-center">
+                    <a href="${row.file_url}" target="_blank" class="text-blue-400 hover:text-blue-300 text-xs font-bold">معاينة</a>
+                    <button onclick="toggleStatus(${row.id}, '${row.status}')" class="text-xs font-bold ${row.status === 'approved' ? 'text-amber-500' : 'text-emerald-500'}">
+                        ${row.status === 'approved' ? 'تعليق' : 'اعتماد'}
+                    </button>
+                    <button onclick="deleteRow(${row.id})" class="text-slate-600 hover:text-red-500">✕</button>
                 </div>
-                
-                <textarea onchange="updateNote(${row.id}, this.value)" 
-                    class="w-full p-3 rounded-xl text-xs h-20 mb-4" 
-                    placeholder="ملاحظات اللجنة العلمية...">${row.admin_note || ''}</textarea>
-            </div>
-            
-            <div class="flex gap-2">
-                <a href="${row.file_url}" target="_blank" class="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl text-center text-xs font-bold">معاينة</a>
-                <button onclick="toggleStatus(${row.id}, '${row.status}')" 
-                    class="flex-[2] btn-confirm py-3 rounded-xl text-xs font-black shadow-lg">
-                    ${row.status === 'approved' ? 'تعليق ⏸️' : 'اعتماد ✅'}
-                </button>
-            </div>
-        </div>
+            </td>
+        </tr>
     `).join("");
 }
 
-window.toggleStatus = async (id, status) => {
+// دالة تحديث عامة لتجنب التكرار
+async function updateData(id, updateObj) {
     const { data: { session } } = await supa.auth.getSession();
+    const finalUpdate = { ...updateObj, processed_by: session.user.email };
+    
+    // تحديث محلي سريع
+    allRows = allRows.map(r => r.id === id ? { ...r, ...finalUpdate } : r);
+    renderList();
+
+    await supa.from("resources").update(finalUpdate).eq("id", id);
+}
+
+window.toggleStatus = (id, status) => {
     const newStatus = status === 'approved' ? 'pending' : 'approved';
-    await supa.from("resources").update({ status: newStatus, processed_by: session.user.email }).eq("id", id);
+    updateData(id, { status: newStatus });
+};
+
+window.deleteRow = async (id) => {
+    if (!confirm("حذف؟")) return;
+    await supa.from("resources").delete().eq("id", id);
     loadAllRows();
 };
 
-window.updateNote = async (id, note) => {
-    const { data: { session } } = await supa.auth.getSession();
-    await supa.from("resources").update({ admin_note: note, processed_by: session.user.email }).eq("id", id);
-};
-
-// الأحداث الأساسية
 document.getElementById("loginForm").onsubmit = async (e) => {
     e.preventDefault();
     await supa.auth.signInWithPassword({ email: document.getElementById("email").value, password: document.getElementById("password").value });
