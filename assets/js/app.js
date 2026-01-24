@@ -1,5 +1,5 @@
- // ===============================
-// 1) إعداد Supabase
+
+
 // ===============================
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY =
@@ -210,4 +210,3 @@ async function loadApprovedResources() {
     </div>
   `).join("");
 }
-
