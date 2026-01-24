@@ -12,16 +12,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const subjectInput = document.getElementById("subjectInput");
     const progressContainer = document.getElementById("progressContainer");
 
-    // 1. فتح المودال
     if (openBtn) {
-        openBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
+        openBtn.addEventListener("click", () => {
             modal.classList.replace("hidden", "flex");
             document.body.style.overflow = "hidden";
         });
     }
 
-    // 2. إغلاق المودال
     if (closeBtn) {
         closeBtn.addEventListener("click", () => {
             modal.classList.replace("flex", "hidden");
@@ -29,14 +26,13 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // 3. الرفع المتعدد لجميع أنواع الملفات
     if (fileInput) {
         fileInput.addEventListener("change", async () => {
             const files = Array.from(fileInput.files);
             const subject = subjectInput?.value.trim();
 
             if (!subject) {
-                alert("⚠️ معليش! لازم تكتب اسم المادة أولاً عشان نعرف وين نحفظ الملفات.");
+                alert("⚠️ فضلاً اكتب اسم المادة أولاً.");
                 fileInput.value = ""; 
                 subjectInput.focus();
                 return;
@@ -44,7 +40,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (files.length === 0) return;
 
-            // إخفاء منطقة السحب وإظهار شريط التحميل
             document.getElementById("dropZone")?.classList.add("hidden");
             progressContainer?.classList.remove("hidden");
 
@@ -52,38 +47,39 @@ document.addEventListener("DOMContentLoaded", () => {
             let uploadedSoFar = 0;
 
             const tasks = files.map(async (file) => {
-                // استخراج الامتداد وتنظيف الاسم
-                const fileExt = file.name.split('.').pop();
-                const fileNameOnly = file.name.split('.').slice(0, -1).join('.');
-                const safeName = `${Date.now()}-${fileNameOnly.replace(/[^\w]/gi, '_')}.${fileExt}`;
-                const path = `pending/${safeName}`;
+                try {
+                    // استخراج الامتداد وتنظيف الاسم (دعم العربية)
+                    const fileExt = file.name.split('.').pop();
+                    const safeName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                    const path = `pending/${safeName}`;
 
-                // عملية الرفع للمخزن (Storage)
-                const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
-                if (upErr) throw upErr;
+                    // 1. رفع الملف إلى Storage
+                    const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
+                    if (upErr) throw new Error(`Storage: ${upErr.message}`);
 
-                // الحصول على الرابط العام
-                const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
+                    // 2. الحصول على الرابط
+                    const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
 
-                // حفظ البيانات في الجدول (Database)
-                const { error: insErr } = await supa.from("resources").insert([{
-                    subject,
-                    file_url: pub.publicUrl,
-                    file_path: path,
-                    file_type: fileExt, // حفظ نوع الملف (pdf, png, docx...)
-                    status: "pending"
-                }]);
-                
-                if (insErr) throw insErr;
+                    // 3. التسجيل في الجدول (Database)
+                    const { error: insErr } = await supa.from("resources").insert([{
+                        subject: subject,
+                        file_url: pub.publicUrl,
+                        file_path: path,
+                        file_type: fileExt,
+                        status: "pending"
+                    }]);
+                    
+                    if (insErr) throw new Error(`Database: ${insErr.message}`);
 
-                // تحديث شريط التقدم
-                uploadedSoFar += file.size;
-                const percent = Math.round((uploadedSoFar / totalSize) * 100);
-                
-                document.getElementById("progressBar").style.width = `${percent}%`;
-                document.getElementById("progressPercent").textContent = `${percent}%`;
-                document.getElementById("fileCountText").textContent = 
-                    `تم رفع ${(uploadedSoFar / (1024 * 1024)).toFixed(1)}MB من ${(totalSize / (1024 * 1024)).toFixed(1)}MB`;
+                    uploadedSoFar += file.size;
+                    const percent = Math.round((uploadedSoFar / totalSize) * 100);
+                    document.getElementById("progressBar").style.width = `${percent}%`;
+                    document.getElementById("progressPercent").textContent = `${percent}%`;
+
+                } catch (err) {
+                    console.error("Critical Error:", err.message);
+                    throw err; 
+                }
             });
 
             try {
@@ -93,8 +89,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     document.getElementById("successUi").classList.remove("hidden");
                 }, 500);
             } catch (err) {
-                console.error("Upload Error:", err);
-                alert("حدث خطأ أثناء الرفع. تأكد من اتصالك بالإنترنت وحاول مجدداً.");
+                // عرض الخطأ الحقيقي في التنبيه للمساعدة في التشخيص
+                alert(`حدث خطأ: ${err.message}`);
                 location.reload();
             }
         });
