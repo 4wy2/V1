@@ -10,11 +10,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeBtn = document.getElementById("closeUploadBtn");
     const fileInput = document.getElementById("fileInput");
     const subjectInput = document.getElementById("subjectInput");
+    const progressContainer = document.getElementById("progressContainer");
 
-    // 1. فتح المودال (بإضافة z-index عالي وضمان التفاعل)
+    // 1. فتح المودال
     if (openBtn) {
         openBtn.addEventListener("click", (e) => {
-            e.stopPropagation(); // منع تداخل الأحداث
+            e.stopPropagation();
             modal.classList.replace("hidden", "flex");
             document.body.style.overflow = "hidden";
         });
@@ -28,30 +29,22 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
-    // 3. الرفع الصاروخي (Parallel Upload)
-    // 3. الرفع الصاروخي مع التنبيه الذكي
+    // 3. الرفع المتعدد لجميع أنواع الملفات
     if (fileInput) {
         fileInput.addEventListener("change", async () => {
             const files = Array.from(fileInput.files);
             const subject = subjectInput?.value.trim();
 
-            // --- التنبيه الجديد هنا ---
             if (!subject) {
-                // تنبيه المستخدم
                 alert("⚠️ معليش! لازم تكتب اسم المادة أولاً عشان نعرف وين نحفظ الملفات.");
-                
-                // تصغير وتصفيير الحقل عشان يقدر يختار مرة ثانية بعد ما يكتب
                 fileInput.value = ""; 
-                
-                // التركيز على حقل اسم المادة تلقائياً
                 subjectInput.focus();
                 return;
             }
-            // ------------------------
 
             if (files.length === 0) return;
 
-            // إذا كل شيء تمام، يبدأ الرفع فوراً
+            // إخفاء منطقة السحب وإظهار شريط التحميل
             document.getElementById("dropZone")?.classList.add("hidden");
             progressContainer?.classList.remove("hidden");
 
@@ -59,21 +52,31 @@ document.addEventListener("DOMContentLoaded", () => {
             let uploadedSoFar = 0;
 
             const tasks = files.map(async (file) => {
-                const safeName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+                // استخراج الامتداد وتنظيف الاسم
+                const fileExt = file.name.split('.').pop();
+                const fileNameOnly = file.name.split('.').slice(0, -1).join('.');
+                const safeName = `${Date.now()}-${fileNameOnly.replace(/[^\w]/gi, '_')}.${fileExt}`;
                 const path = `pending/${safeName}`;
 
+                // عملية الرفع للمخزن (Storage)
                 const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
                 if (upErr) throw upErr;
 
+                // الحصول على الرابط العام
                 const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
 
-                await supa.from("resources").insert([{
+                // حفظ البيانات في الجدول (Database)
+                const { error: insErr } = await supa.from("resources").insert([{
                     subject,
                     file_url: pub.publicUrl,
                     file_path: path,
+                    file_type: fileExt, // حفظ نوع الملف (pdf, png, docx...)
                     status: "pending"
                 }]);
+                
+                if (insErr) throw insErr;
 
+                // تحديث شريط التقدم
                 uploadedSoFar += file.size;
                 const percent = Math.round((uploadedSoFar / totalSize) * 100);
                 
@@ -88,10 +91,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 setTimeout(() => {
                     document.getElementById("formContent").classList.add("hidden");
                     document.getElementById("successUi").classList.remove("hidden");
-                }, 300);
+                }, 500);
             } catch (err) {
-                console.error(err);
-                alert("خطأ في الرفع، حاول مرة أخرى.");
+                console.error("Upload Error:", err);
+                alert("حدث خطأ أثناء الرفع. تأكد من اتصالك بالإنترنت وحاول مجدداً.");
                 location.reload();
             }
         });
