@@ -18,13 +18,27 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.style.overflow = "hidden";
         });
     }
+    
+    
+    // دالة موحدة لإغلاق المودال وإعادة ضبطه
+    const closeModal = () => {
+        modal.classList.replace("flex", "hidden");
+        document.body.style.overflow = "";
+        
+        // إعادة تهيئة النموذج ليكون جاهزاً للرفع القادم
+        setTimeout(() => {
+            document.getElementById("formContent")?.classList.remove("hidden");
+            document.getElementById("successUi")?.classList.add("hidden");
+            document.getElementById("dropZone")?.classList.remove("hidden");
+            document.getElementById("progressContainer")?.classList.add("hidden");
+            if (fileInput) fileInput.value = ""; 
+        }, 500);
+    };
 
-    if (closeBtn) {
-        closeBtn.addEventListener("click", () => {
-            modal.classList.replace("flex", "hidden");
-            document.body.style.overflow = "";
-        });
-    }
+    // ربط الأكس (X) وزر الإغلاق بالدالة
+    document.querySelectorAll("#closeUploadBtn, #closeSuccessBtn").forEach(btn => {
+        btn.addEventListener("click", closeModal);
+    });
 
     if (fileInput) {
         fileInput.addEventListener("change", async () => {
