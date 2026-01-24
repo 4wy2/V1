@@ -12,9 +12,16 @@ function escapeHtml(str) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // تعريف العناصر بشكل صحيح
+  const modal = document.getElementById("uploadModal");
+  const openBtn = document.getElementById("openUploadBtn"); // الزر اللي يفتح المودال
+  const closeBtn = document.getElementById("closeUploadBtn");
+  const closeSuccessBtn = document.getElementById("closeSuccessBtn");
+  
   const fileInput = document.getElementById("fileInput");
-  const subjectInput = form?.querySelector('input[name="subject"]');
-  const noteInput = form?.querySelector('input[name="note"]');
+  const subjectInput = document.getElementById("subjectInput");
+  const noteInput = document.getElementById("noteInput");
+  
   const dropZone = document.getElementById("dropZone");
   const progressContainer = document.getElementById("progressContainer");
   const progressBar = document.getElementById("progressBar");
@@ -23,7 +30,30 @@ document.addEventListener("DOMContentLoaded", () => {
   const fileCountText = document.getElementById("fileCountText");
 
   // ==========================================
-  // 2) منطق الرفع التلقائي والتراكمي
+  // 2) منطق فتح وإغلاق المودال (الزر الرئيسي)
+  // ==========================================
+  if (openBtn && modal) {
+    openBtn.onclick = (e) => {
+      e.preventDefault();
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+      document.body.style.overflow = "hidden";
+    };
+  }
+
+  const closeModal = () => {
+    if (modal) {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+      document.body.style.overflow = "auto";
+    }
+  };
+
+  if (closeBtn) closeBtn.onclick = closeModal;
+  if (closeSuccessBtn) closeSuccessBtn.onclick = () => window.location.reload(); // تحديث الصفحة لرؤية النتائج
+
+  // ==========================================
+  // 3) منطق الرفع التلقائي والتراكمي
   // ==========================================
   if (fileInput) {
     fileInput.addEventListener("change", async () => {
@@ -31,7 +61,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const subject = subjectInput?.value?.trim();
       const note = noteInput?.value?.trim();
 
-      // التحقق قبل البدء
       if (!subject) {
         alert("⚠️ يرجى كتابة اسم المادة أولاً قبل اختيار الملفات.");
         fileInput.value = ""; 
@@ -39,58 +68,48 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (files.length > 0) {
-        // تبديل الواجهة: إخفاء منطقة الرفع وإظهار شريط التقدم التراكمي
         if (dropZone) dropZone.classList.add("hidden");
         if (progressContainer) progressContainer.classList.remove("hidden");
         
         let completedFiles = 0;
         const totalFiles = files.length;
 
-        // تنفيذ الرفع المتوازي (Parallel Upload)
         const uploadPromises = files.map(async (file) => {
           const safeName = `${Date.now()}_${file.name.replace(/[^\w.\-]+/g, "_")}`;
           const path = `pending/${safeName}`;
 
           try {
-            // 1. عملية الرفع للسحابة
             const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
             if (upErr) throw upErr;
 
-            // 2. الحصول على الرابط العمومي
             const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
 
-            // 3. تسجيل البيانات في قاعدة البيانات
-            const { error: insErr } = await supa.from("resources").insert([{
+            await supa.from("resources").insert([{
               subject,
               note: note || null,
               file_path: path,
               file_url: pub.publicUrl,
               status: "pending"
             }]);
-            if (insErr) throw insErr;
 
-            // تحديث الحسبة التراكمية (Total Progress Calculation)
             completedFiles++;
             const totalPercent = Math.round((completedFiles / totalFiles) * 100);
             
-            // تحديث العناصر المرئية بنعومة
             if (progressBar) progressBar.style.width = `${totalPercent}%`;
             if (progressPercent) progressPercent.textContent = `${totalPercent}%`;
             if (fileCountText) fileCountText.textContent = `تم رفع ${completedFiles} من أصل ${totalFiles} ملفات`;
-            if (progressText) progressText.textContent = totalPercent < 100 ? "جاري المعالجة والرفع..." : "اكتملت العملية!";
+            if (progressText) progressText.textContent = totalPercent < 100 ? "جاري المعالجة..." : "اكتمل الرفع!";
 
           } catch (err) {
-            console.error("خطأ في رفع ملف:", file.name, err);
+            console.error("خطأ:", err);
           }
         });
 
-        // انتظار انتهاء جميع الوعود (Promises)
         await Promise.all(uploadPromises);
 
-        // إظهار واجهة النجاح النهائية
         setTimeout(() => {
-          document.getElementById("formContent").classList.add("hidden");
-          document.getElementById("successUi").classList.remove("hidden");
+          document.getElementById("formContent")?.classList.add("hidden");
+          document.getElementById("successUi")?.classList.remove("hidden");
         }, 800);
       }
     });
@@ -100,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================
-// 3) جلب وعرض البيانات المعتمدة
+// 4) جلب وعرض البيانات المعتمدة
 // ==========================================
 async function loadApprovedResources() {
   const box = document.getElementById("approvedResources");
