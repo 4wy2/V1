@@ -1,180 +1,113 @@
-// ===============================
-// 1) إعداد Supabase
-// ===============================
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
 
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const BUCKET = "ee-resources";
 
-// ===============================
-// 2) مساعدات
-// ===============================
+// تحسين الأمان والعرض
 function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (s) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "\"": "&quot;",
-    "'": "&#039;",
-  }[s]));
+  return String(str).replace(/[&<>"']/g, s => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" }[s]));
 }
 
 function setSubmitLoading(isLoading, text = "إرسال للمراجعة") {
   const btn = document.getElementById("submitBtn");
   if (!btn) return;
   btn.disabled = isLoading;
-  btn.style.opacity = isLoading ? "0.7" : "1";
   btn.textContent = text;
+  btn.style.opacity = isLoading ? "0.6" : "1";
 }
 
-// ===============================
-// 3) UI وربط الأحداث
-// ===============================
 document.addEventListener("DOMContentLoaded", () => {
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("overlay");
-  const openSidebarBtn = document.getElementById("openSidebar");
-  const closeSidebarBtn = document.getElementById("closeSidebar");
-  const uploadModal = document.getElementById("uploadModal");
-  const openUploadBtn = document.getElementById("openUploadBtn");
-  const closeUploadBtn = document.getElementById("closeUploadBtn");
-  const closeSuccessBtn = document.getElementById("closeSuccessBtn");
-  const formContent = document.getElementById("formContent");
-  const successUi = document.getElementById("successUi");
   const form = document.getElementById("eeSourceForm");
+  const fileInput = document.getElementById("fileInput");
+  const fileStatus = document.getElementById("fileStatus");
 
-  // وظائف الإغلاق والفتح
-  const closeAll = () => {
-    sidebar?.classList.add("translate-x-full");
-    overlay?.classList.add("hidden");
-    uploadModal?.classList.add("hidden");
-    uploadModal?.classList.remove("flex");
-    document.body.style.overflow = "auto";
-  };
+  // تحديث النص عند اختيار الملفات (مهم جداً للآيباد)
+  if (fileInput) {
+    fileInput.addEventListener("change", () => {
+      const count = fileInput.files.length;
+      fileStatus.textContent = count > 0 ? `تم اختيار ${count} ملفات` : "اضغط لاختيار ملفات PDF (متعدد)";
+      fileStatus.classList.add("text-indigo-400");
+    });
+  }
 
-  if (openSidebarBtn) openSidebarBtn.addEventListener("click", () => {
-    sidebar.classList.remove("translate-x-full");
-    overlay.classList.remove("hidden");
-    document.body.style.overflow = "hidden";
-  });
-
-  if (closeSidebarBtn) closeSidebarBtn.addEventListener("click", closeAll);
-  if (openUploadBtn) openUploadBtn.addEventListener("click", () => {
-    uploadModal.classList.remove("hidden");
-    uploadModal.classList.add("flex");
-    document.body.style.overflow = "hidden";
-  });
-
-  if (closeUploadBtn) closeUploadBtn.addEventListener("click", closeAll);
-  if (closeSuccessBtn) closeSuccessBtn.addEventListener("click", () => {
-    closeAll();
-    if (formContent) formContent.classList.remove("hidden");
-    if (successUi) successUi.classList.add("hidden");
-  });
-
-  if (overlay) overlay.addEventListener("click", closeAll);
-
-  // ===============================
-  // 4) رفع عدة ملفات + تسجيل في DB
-  // ===============================
+  // معالجة الرفع المتوازي
   if (form) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       
-      const subject = form.querySelector('input[name="subject"]')?.value?.trim() || "";
-      const note = form.querySelector('input[name="note"]')?.value?.trim() || "";
-      const fileInput = form.querySelector('input[name="file"]');
-      const files = fileInput?.files;
+      const subject = form.querySelector('input[name="subject"]')?.value?.trim();
+      const note = form.querySelector('input[name="note"]')?.value?.trim();
+      const files = Array.from(fileInput?.files || []);
 
-      if (!subject) return alert("فضلاً اكتب اسم المادة");
-      if (!files || files.length === 0) return alert("فضلاً اختر ملفاً واحداً على الأقل");
+      if (!subject || files.length === 0) return alert("تأكد من اسم المادة واختيار الملفات");
 
-      setSubmitLoading(true, "جاري البدء...");
+      setSubmitLoading(true, "جاري رفع الملفات معاً...");
 
       try {
-        // حلقة تكرارية لرفع كل ملف على حدة
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          setSubmitLoading(true, `جاري رفع (${i + 1}/${files.length})...`);
-
-          if (file.type !== "application/pdf") {
-            console.warn(`تخطى الملف ${file.name} لأنه ليس PDF`);
-            continue; 
-          }
+        // تنفيذ جميع عمليات الرفع في وقت واحد (Parallel)
+        const uploadPromises = files.map(async (file) => {
+          if (file.type !== "application/pdf") return;
 
           const safeName = file.name.replace(/[^\w.\-]+/g, "_");
           const path = `pending/${Date.now()}_${safeName}`;
 
-          // 1. الرفع للـ Storage
-          const { error: uploadError } = await supa.storage
-            .from(BUCKET)
-            .upload(path, file);
+          // 1. رفع للمساحة التخزينية
+          const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
+          if (upErr) throw upErr;
 
-          if (uploadError) throw uploadError;
+          // 2. جلب الرابط العام
+          const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
 
-          // 2. جلب الرابط
-          const { data: publicData } = supa.storage.from(BUCKET).getPublicUrl(path);
-          const fileUrl = publicData?.publicUrl;
-
-          // 3. الإدخال في الجدول
-          const { error: insertError } = await supa.from("resources").insert([{
+          // 3. التسجيل في قاعدة البيانات
+          const { error: insErr } = await supa.from("resources").insert([{
             subject,
             note: note || null,
             file_path: path,
-            file_url: fileUrl,
-            status: "pending",
+            file_url: pub.publicUrl,
+            status: "pending"
           }]);
+          if (insErr) throw insErr;
+        });
 
-          if (insertError) throw insertError;
-        }
+        await Promise.all(uploadPromises);
 
-        // نجاح العملية بالكامل
-        if (formContent) formContent.classList.add("hidden");
-        if (successUi) successUi.classList.remove("hidden");
+        // إظهار واجهة النجاح
+        document.getElementById("formContent").classList.add("hidden");
+        document.getElementById("successUi").classList.remove("hidden");
         form.reset();
+        fileStatus.textContent = "اضغط لاختيار ملفات PDF (متعدد)";
 
       } catch (err) {
         console.error(err);
-        alert("حدث خطأ أثناء المعالجة، تأكد من اتصالك أو حجم الملفات.");
+        alert("حدث خطأ في الرفع، يرجى التحقق من جودة الاتصال.");
       } finally {
         setSubmitLoading(false);
       }
     });
   }
 
+  // تحميل المصادر المعتمدة للعرض
   loadApprovedResources();
 });
 
+// دالة العرض (نفسها مع تحسين طفيف في الشكل)
 async function loadApprovedResources() {
   const box = document.getElementById("approvedResources");
   if (!box) return;
-  box.innerHTML = '<div class="text-center text-[10px] text-white/30 italic">جاري جلب المصادر...</div>';
 
-  const { data, error } = await supa
-    .from("resources")
-    .select("*")
-    .eq("status", "approved")
-    .order("created_at", { ascending: false });
+  const { data, error } = await supa.from("resources").select("*").eq("status", "approved").order("created_at", { ascending: false });
 
-  if (error || !data) {
-    box.innerHTML = '<div class="text-center text-[10px] text-red-400">فشل التحميل</div>';
-    return;
-  }
-
-  if (data.length === 0) {
-    box.innerHTML = '<div class="text-center text-[10px] text-white/20">لا توجد ملفات حالياً</div>';
-    return;
-  }
+  if (error) return box.innerHTML = "<p class='text-center text-xs opacity-30'>تعذر تحميل الملفات</p>";
 
   box.innerHTML = data.map(item => `
-    <div class="glass flex items-center justify-between p-4 rounded-2xl border border-white/5 hover:border-indigo-500/20 transition-all mb-3">
+    <div class="glass p-4 rounded-2xl flex items-center justify-between gap-4 border border-white/5 hover:border-indigo-500/20 transition-all mb-3">
       <div class="text-right">
         <h4 class="text-sm font-bold text-white/90">${escapeHtml(item.subject)}</h4>
-        <p class="text-[10px] text-white/40">${escapeHtml(item.note || 'مصدر أكاديمي')}</p>
+        <p class="text-[10px] text-white/30">${escapeHtml(item.note || 'مصدر أكاديمي')}</p>
       </div>
       <a href="${item.file_url}" target="_blank" class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all">
-        <i class="fa-solid fa-download text-xs"></i>
+        <i class="fa-solid fa-arrow-down-open-pill text-xs"></i>
       </a>
     </div>
   `).join('');
