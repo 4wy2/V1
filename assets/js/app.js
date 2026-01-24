@@ -7,7 +7,6 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const BUCKET = "ee-resources";
 
-// دالة تنظيف النص لمنع الثغرات
 function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, s => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" }[s]));
 }
@@ -16,70 +15,73 @@ function escapeHtml(str) {
 // 2) ربط الأحداث عند تحميل الصفحة
 // ==========================================
 document.addEventListener("DOMContentLoaded", () => {
+  // جلب العناصر
   const form = document.getElementById("eeSourceForm");
-  const fileInput = document.getElementById("fileInput");
-  const fileStatus = document.getElementById("fileStatus");
-  
-  // عناصر شريط التقدم
+  const fileInput = document.getElementById("fileInput"); // تأكد أن هذا موجود في الـ HTML
   const submitBtn = document.getElementById("submitBtn");
-  const progressContainer = document.getElementById("progressContainer");
-  const progressBar = document.getElementById("progressBar");
-  const progressText = document.getElementById("progressText");
-  const progressPercent = document.getElementById("progressPercent");
+  const modal = document.getElementById("uploadModal");
+  const openBtn = document.getElementById("openUploadBtn");
+  const closeBtn = document.getElementById("closeUploadBtn");
 
-  // تحديث حالة الملفات المحددة
+  // فحص سريع للأخطاء (سيظهر في الكونسول إذا فيه نقص)
+  if (!form) console.error("⚠️ خطأ: نموذج eeSourceForm غير موجود");
+  if (!fileInput) console.error("⚠️ خطأ: حقل fileInput غير موجود - أضف id='fileInput' لخانة الملفات");
+
+  // منطق فتح وإغلاق المودال
+  if (openBtn && modal) {
+    openBtn.onclick = () => modal.classList.remove("hidden");
+  }
+  if (closeBtn && modal) {
+    closeBtn.onclick = () => modal.classList.add("hidden");
+  }
+
+  // تحديث نص الملفات عند الاختيار
   if (fileInput) {
     fileInput.addEventListener("change", () => {
-      const count = fileInput.files.length;
-      if (count > 0) {
-        fileStatus.textContent = `تم اختيار ${count} ملفات - جاهز للرفع`;
-        fileStatus.classList.replace("text-white/60", "text-indigo-400");
+      const fileStatus = document.getElementById("fileStatus");
+      if (fileStatus) {
+        fileStatus.textContent = fileInput.files.length > 0 ? `تم اختيار ${fileInput.files.length} ملفات` : "اضغط لاختيار ملفات PDF";
       }
     });
   }
 
   // ==========================================
-  // 3) منطق الرفع التفاعلي (Parallel Upload)
+  // 3) منطق الإرسال
   // ==========================================
   if (form) {
-    form.addEventListener("submit", async (e) => {
+    form.onsubmit = async (e) => {
       e.preventDefault();
       
       const subject = form.querySelector('input[name="subject"]')?.value?.trim();
       const note = form.querySelector('input[name="note"]')?.value?.trim();
       const files = Array.from(fileInput?.files || []);
 
-      if (!subject || files.length === 0) return alert("الرجاء إدخال اسم المادة واختيار الملفات");
+      if (!subject || files.length === 0) {
+        alert("الرجاء إدخال اسم المادة واختيار ملفات PDF");
+        return;
+      }
 
       // تجهيز الواجهة للرفع
-      submitBtn.classList.add("hidden");
-      progressContainer.classList.remove("hidden");
-      
-      let completedFiles = 0;
-      const totalFiles = files.length;
+      const progressContainer = document.getElementById("progressContainer");
+      const progressBar = document.getElementById("progressBar");
+      const progressPercent = document.getElementById("progressPercent");
+
+      if (submitBtn) submitBtn.classList.add("hidden");
+      if (progressContainer) progressContainer.classList.remove("hidden");
 
       try {
-        // فحص حجم الملفات الكلي للتنبيه
-        const totalSize = files.reduce((acc, f) => acc + f.size, 0) / (1024 * 1024);
-        if (totalSize > 20) {
-            progressText.textContent = "حجم الملفات كبير، يرجى الانتظار...";
-        }
+        const uploadPromises = files.map(async (file, index) => {
+          const safeName = `${Date.now()}_${file.name.replace(/[^\w.\-]+/g, "_")}`;
+          const path = `pending/${safeName}`;
 
-        // إطلاق عمليات الرفع بالتوازي
-        const uploadPromises = files.map(async (file) => {
-          if (file.type !== "application/pdf") return;
-
-          const safeName = file.name.replace(/[^\w.\-]+/g, "_");
-          const path = `pending/${Date.now()}_${safeName}`;
-
-          // 1. رفع الملف إلى السحابة
+          // الرفع لـ Storage
           const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
           if (upErr) throw upErr;
 
-          // 2. جلب الرابط المباشر
+          // جلب الرابط
           const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
 
-          // 3. حفظ البيانات في الجدول
+          // الحفظ في الجدول
           const { error: insErr } = await supa.from("resources").insert([{
             subject,
             note: note || null,
@@ -89,72 +91,49 @@ document.addEventListener("DOMContentLoaded", () => {
           }]);
           if (insErr) throw insErr;
 
-          // تحديث العداد والشريط بعد نجاح كل ملف
-          completedFiles++;
-          const percent = Math.round((completedFiles / totalFiles) * 100);
-          
-          progressBar.style.width = `${percent}%`;
-          progressPercent.textContent = `${percent}%`;
-          progressText.textContent = `تم معالجة ${completedFiles} من ${totalFiles}`;
+          // تحديث الشريط
+          const percent = Math.round(((index + 1) / files.length) * 100);
+          if (progressBar) progressBar.style.width = `${percent}%`;
+          if (progressPercent) progressPercent.textContent = `${percent}%`;
         });
 
-        // انتظار انتهاء الجميع
         await Promise.all(uploadPromises);
 
-        // نجاح العملية بالكامل
-        setTimeout(() => {
-          document.getElementById("formContent").classList.add("hidden");
-          document.getElementById("successUi").classList.remove("hidden");
-          form.reset();
-        }, 600);
+        // واجهة النجاح
+        const formContent = document.getElementById("formContent");
+        const successUi = document.getElementById("successUi");
+        if (formContent) formContent.classList.add("hidden");
+        if (successUi) successUi.classList.remove("hidden");
+        form.reset();
 
       } catch (err) {
         console.error("Upload Error:", err);
-        alert("حدث خطأ أثناء الرفع. تأكد من اتصال الإنترنت وحاول مجدداً.");
-        
-        // إعادة الواجهة لحالتها الأصلية للمحاولة مرة أخرى
-        submitBtn.classList.remove("hidden");
-        progressContainer.classList.add("hidden");
-        progressBar.style.width = "0%";
+        alert("حدث خطأ أثناء الرفع، يرجى المحاولة لاحقاً.");
+        if (submitBtn) submitBtn.classList.remove("hidden");
+        if (progressContainer) progressContainer.classList.add("hidden");
       }
-    });
+    };
   }
 
-  // تحميل البيانات المعتمدة في الأسفل
   loadApprovedResources();
 });
 
-// ==========================================
-// 4) دالة عرض المصادر المعتمدة
-// ==========================================
+// دالة العرض (بدون تغيير كبير)
 async function loadApprovedResources() {
   const box = document.getElementById("approvedResources");
   if (!box) return;
 
-  const { data, error } = await supa
-    .from("resources")
-    .select("*")
-    .eq("status", "approved")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    box.innerHTML = "<p class='text-center text-xs text-red-400/50'>خطأ في جلب البيانات</p>";
-    return;
-  }
-
-  if (!data || data.length === 0) {
-    box.innerHTML = "<p class='text-center text-xs text-white/20'>لا توجد مصادر متاحة حالياً</p>";
-    return;
-  }
+  const { data, error } = await supa.from("resources").select("*").eq("status", "approved").order("created_at", { ascending: false });
+  if (error || !data) return;
 
   box.innerHTML = data.map(item => `
-    <div class="glass p-4 rounded-2xl flex items-center justify-between gap-4 border border-white/5 hover:border-indigo-500/20 transition-all mb-3 group">
+    <div class="glass p-4 rounded-2xl flex items-center justify-between gap-4 border border-white/5 mb-3 transition-all hover:border-indigo-500/30">
       <div class="text-right">
-        <h4 class="text-sm font-bold text-white/90 group-hover:text-indigo-300 transition-colors">${escapeHtml(item.subject)}</h4>
-        <p class="text-[10px] text-white/30 mt-0.5">${escapeHtml(item.note || 'مصدر أكاديمي')}</p>
+        <h4 class="text-sm font-bold text-white/90">${escapeHtml(item.subject)}</h4>
+        <p class="text-[10px] text-white/30">${escapeHtml(item.note || 'مصدر أكاديمي')}</p>
       </div>
-      <a href="${item.file_url}" target="_blank" class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all shadow-lg shadow-indigo-500/5">
-        <i class="fa-solid fa-download text-xs"></i>
+      <a href="${item.file_url}" target="_blank" class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400 hover:bg-indigo-500 hover:text-white transition-all">
+        <i class="fa-solid fa-download"></i>
       </a>
     </div>
   `).join('');
