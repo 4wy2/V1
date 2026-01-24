@@ -295,40 +295,46 @@
     </div>
   </main>
 
-  <!-- Upload Modal -->
   <div id="uploadModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-    <div class="glass w-full max-w-lg rounded-[2.5rem] p-8 relative shadow-2xl">
-      <button id="closeUploadBtn" class="absolute top-6 left-6 text-white/40 hover:text-white transition" aria-label="إغلاق">
-        <i class="fa-solid fa-xmark text-xl"></i>
-      </button>
+  <div class="glass w-full max-w-lg rounded-[2.5rem] p-8 relative shadow-2xl">
+    <button id="closeUploadBtn" class="absolute top-6 left-6 text-white/40 hover:text-white transition" aria-label="إغلاق">
+      <i class="fa-solid fa-xmark text-xl"></i>
+    </button>
 
-      <div id="formContent">
-        <div class="text-right mb-8">
-          <h3 class="text-2xl font-black text-white">مشاركة مصدر أكاديمي</h3>
-          <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Submit Your Resources</p>
+    <div id="formContent">
+      <div class="text-right mb-8">
+        <h3 class="text-2xl font-black text-white">مشاركة مصدر أكاديمي</h3>
+        <p class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest mt-1">Submit Your Resources</p>
+      </div>
+
+      <form enctype="multipart/form-data" id="eeSourceForm" class="space-y-4 text-right">
+        <input type="text" name="subject" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder="اسم المادة">
+        <input type="text" name="note" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder="رابط خارجي أو ملاحظة">
+        
+        <div class="border border-dashed border-white/10 rounded-xl p-6 text-center group hover:border-indigo-500/50 transition-colors">
+          <label class="cursor-pointer block">
+            <i class="fa-solid fa-file-circle-plus text-2xl text-white/20 group-hover:text-indigo-400 mb-2 transition-colors"></i>
+            <input type="file" name="file" id="fileInput" class="hidden" accept="application/pdf" multiple>
+            <div id="fileSelectText" class="text-xs text-white/40 font-bold">اضغط لاختيار ملفات PDF</div>
+          </label>
+          <div id="fileList" class="mt-3 flex flex-wrap gap-2 justify-center"></div>
         </div>
 
-        <form enctype="multipart/form-data" id="eeSourceForm" class="space-y-4 text-right">
-          <input type="text" name="subject" required class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder="اسم المادة">
-          <input type="text" name="note" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none" placeholder="رابط خارجي أو ملاحظة">
-          <div class="border border-dashed border-white/10 rounded-xl p-4 text-center">
-            <input type="file" name="file" class="text-xs text-white/40 w-full cursor-pointer" accept="application/pdf">
-          </div>
-          <button type="submit" class="btn-brand w-full py-4 rounded-xl font-black text-sm" id="submitBtn">
-            إرسال للمراجعة
-          </button>
-          <p class="text-[10px] text-white/30 text-center">حالياً للتجربة: رفع PDF فقط</p>
-        </form>
-      </div>
+        <button type="submit" class="btn-brand w-full py-4 rounded-xl font-black text-sm" id="submitBtn">
+          إرسال للمراجعة
+        </button>
+        <p class="text-[10px] text-white/30 text-center">يمكنك اختيار أكثر من ملف PDF معاً</p>
+      </form>
+    </div>
 
-      <div id="successUi" class="hidden text-center py-10 animate-scale">
-        <i class="fa-solid fa-circle-check text-5xl text-green-500 mb-4"></i>
-        <h3 class="text-xl font-black">تم الاستلام بنجاح!</h3>
-        <p class="text-sm text-white/40 mt-3 px-10">شكراً لمساهمتك القيمة يا مهندس.</p>
-        <button id="closeSuccessBtn" class="mt-8 text-indigo-400 underline text-xs">إغلاق</button>
-      </div>
+    <div id="successUi" class="hidden text-center py-10 animate-scale">
+      <i class="fa-solid fa-circle-check text-5xl text-green-500 mb-4"></i>
+      <h3 class="text-xl font-black">تم الاستلام بنجاح!</h3>
+      <p id="successMsg" class="text-sm text-white/40 mt-3 px-10">شكراً لمساهمتك القيمة يا مهندس.</p>
+      <button id="closeSuccessBtn" class="mt-8 text-indigo-400 underline text-xs">إغلاق</button>
     </div>
   </div>
+</div>
 
   <footer class="mt-6 py-8 border-t border-white/5 bg-black/20 backdrop-blur-sm">
     <div class="max-w-5xl mx-auto px-6 flex flex-col items-center">
