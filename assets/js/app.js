@@ -5,69 +5,84 @@ const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const BUCKET = "ee-resources";
 
 document.addEventListener("DOMContentLoaded", () => {
+    const modal = document.getElementById("uploadModal");
+    const openBtn = document.getElementById("openUploadBtn");
+    const closeBtn = document.getElementById("closeUploadBtn");
     const fileInput = document.getElementById("fileInput");
-    const progressContainer = document.getElementById("progressContainer");
-    const progressBar = document.getElementById("progressBar");
-    const progressPercent = document.getElementById("progressPercent");
+    const subjectInput = document.getElementById("subjectInput");
 
+    // 1. فتح المودال (بإضافة z-index عالي وضمان التفاعل)
+    if (openBtn) {
+        openBtn.addEventListener("click", (e) => {
+            e.stopPropagation(); // منع تداخل الأحداث
+            modal.classList.replace("hidden", "flex");
+            document.body.style.overflow = "hidden";
+        });
+    }
+
+    // 2. إغلاق المودال
+    if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+            modal.classList.replace("flex", "hidden");
+            document.body.style.overflow = "";
+        });
+    }
+
+    // 3. الرفع الصاروخي (Parallel Upload)
     if (fileInput) {
-        fileInput.onchange = async () => {
+        fileInput.addEventListener("change", async () => {
             const files = Array.from(fileInput.files);
-            const subject = document.getElementById("subjectInput")?.value.trim();
-            
+            const subject = subjectInput?.value.trim();
+
             if (!subject || files.length === 0) return;
 
-            // إظهار واجهة التقدم فوراً
+            // تحديث الواجهة فوراً
             document.getElementById("dropZone")?.classList.add("hidden");
-            progressContainer?.classList.remove("hidden");
+            document.getElementById("progressContainer")?.classList.remove("hidden");
 
             const totalSize = files.reduce((acc, f) => acc + f.size, 0);
-            let totalUploaded = 0;
+            let uploadedSoFar = 0;
 
-            // مصفوفة الوعود للرفع المتوازي (Fast Parallel Processing)
-            const uploadTasks = files.map(async (file) => {
+            // الرفع المتوازي (كل الملفات تطير سوى)
+            const tasks = files.map(async (file) => {
                 const safeName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
                 const path = `pending/${safeName}`;
 
-                // رفع الملف (السرعة تعتمد على الـ Parallelism هنا)
-                const { data, error } = await supa.storage.from(BUCKET).upload(path, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
+                // رفع (سرعة قصوى)
+                const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
+                if (upErr) throw upErr;
 
-                if (error) throw error;
-
-                // تحديث العداد بمجرد انتهاء هذا الملف
-                totalUploaded += file.size;
-                const percent = Math.round((totalUploaded / totalSize) * 100);
-                
-                // تحديث الـ UI
-                if (progressBar) progressBar.style.width = `${percent}%`;
-                if (progressPercent) progressPercent.textContent = `${percent}%`;
-
-                // تسجيل البيانات (Async دون تعطيل الرفع)
                 const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
-                return supa.from("resources").insert([{
+
+                // تسجيل البيانات في الخلفية دون تعطيل الرفع
+                await supa.from("resources").insert([{
                     subject,
                     file_url: pub.publicUrl,
                     file_path: path,
                     status: "pending"
                 }]);
+
+                // تحديث الـ Progress بناءً على حجم الملف اللي خلص
+                uploadedSoFar += file.size;
+                const percent = Math.round((uploadedSoFar / totalSize) * 100);
+                
+                document.getElementById("progressBar").style.width = `${percent}%`;
+                document.getElementById("progressPercent").textContent = `${percent}%`;
+                document.getElementById("fileCountText").textContent = 
+                    `تم رفع ${(uploadedSoFar / (1024 * 1024)).toFixed(1)}MB من ${(totalSize / (1024 * 1024)).toFixed(1)}MB`;
             });
 
             try {
-                // تشغيل كل عمليات الرفع دفعة واحدة
-                await Promise.all(uploadTasks);
-                
-                // واجهة النجاح
+                await Promise.all(tasks);
                 setTimeout(() => {
-                    document.getElementById("formContent")?.classList.add("hidden");
-                    document.getElementById("successUi")?.classList.remove("hidden");
-                }, 400);
+                    document.getElementById("formContent").classList.add("hidden");
+                    document.getElementById("successUi").classList.remove("hidden");
+                }, 300);
             } catch (err) {
-                console.error("Upload failed:", err);
-                alert("فشل الرفع، تأكد من سرعة الإنترنت لديك.");
+                console.error(err);
+                alert("خطأ في الرفع، حاول مرة أخرى.");
+                location.reload();
             }
-        };
+        });
     }
 });
