@@ -29,32 +29,44 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // 3. الرفع الصاروخي (Parallel Upload)
+    // 3. الرفع الصاروخي مع التنبيه الذكي
     if (fileInput) {
         fileInput.addEventListener("change", async () => {
             const files = Array.from(fileInput.files);
             const subject = subjectInput?.value.trim();
 
-            if (!subject || files.length === 0) return;
+            // --- التنبيه الجديد هنا ---
+            if (!subject) {
+                // تنبيه المستخدم
+                alert("⚠️ معليش! لازم تكتب اسم المادة أولاً عشان نعرف وين نحفظ الملفات.");
+                
+                // تصغير وتصفيير الحقل عشان يقدر يختار مرة ثانية بعد ما يكتب
+                fileInput.value = ""; 
+                
+                // التركيز على حقل اسم المادة تلقائياً
+                subjectInput.focus();
+                return;
+            }
+            // ------------------------
 
-            // تحديث الواجهة فوراً
+            if (files.length === 0) return;
+
+            // إذا كل شيء تمام، يبدأ الرفع فوراً
             document.getElementById("dropZone")?.classList.add("hidden");
-            document.getElementById("progressContainer")?.classList.remove("hidden");
+            progressContainer?.classList.remove("hidden");
 
             const totalSize = files.reduce((acc, f) => acc + f.size, 0);
             let uploadedSoFar = 0;
 
-            // الرفع المتوازي (كل الملفات تطير سوى)
             const tasks = files.map(async (file) => {
                 const safeName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
                 const path = `pending/${safeName}`;
 
-                // رفع (سرعة قصوى)
                 const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
                 if (upErr) throw upErr;
 
                 const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
 
-                // تسجيل البيانات في الخلفية دون تعطيل الرفع
                 await supa.from("resources").insert([{
                     subject,
                     file_url: pub.publicUrl,
@@ -62,7 +74,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     status: "pending"
                 }]);
 
-                // تحديث الـ Progress بناءً على حجم الملف اللي خلص
                 uploadedSoFar += file.size;
                 const percent = Math.round((uploadedSoFar / totalSize) * 100);
                 
