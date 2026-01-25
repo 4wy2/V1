@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engineering OS | Select Specialty</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;700;900&family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --brand-primary: #3b82f6;
+            --brand-glow: rgba(59, 130, 246, 0.5);
+            --bg-deep: #050505;
+        }
+
+        body {
+            background-color: var(--bg-deep);
+            color: #ffffff;
+            font-family: 'Cairo', sans-serif;
+            overflow: hidden; /* لمنع السكرول المزعج في الواجهة الرئيسية */
+        }
+
+        .eng-font { font-family: 'Space Grotesk', sans-serif; }
+
+        /* تأثير الخلفية الشبكية المتحركة (Grid) */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image: 
+                linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+            mask-image: radial-gradient(circle at center, black, transparent 80%);
+            z-index: -1;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            from { background-position: 0 0; }
+            to { background-position: 50px 50px; }
+        }
+
+        /* هالات الضوء النيون */
+        .neon-aura {
+            position: absolute;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, var(--brand-glow) 0%, transparent 70%);
+            filter: blur(80px);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* كرت التخصص - التصميم المستقبلي */
+        .specialty-card {
+            position: relative;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border-radius: 2rem;
+            transition: all 0.5s cubic-bezier(0.23, 1, 0.32, 1);
+            overflow: hidden;
+        }
+
+        .specialty-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.8s;
+        }
+
+        .specialty-card:hover::before { transform: translateX(100%); }
+
+        .specialty-card:hover {
+            transform: translateY(-15px) scale(1.02);
+            border-color: var(--brand-primary);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 20px var(--brand-glow);
+        }
+
+        /* تأثير الـ Scanline (خطوط التلفاز القديم) */
+        .scanlines::after {
+            content: " ";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 4px, 3px 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* نصوص الـ Stroke المتطورة */
+        .outline-text {
+            -webkit-text-stroke: 1px rgba(255, 255, 255, 0.2);
+            color: transparent;
+            transition: all 0.4s;
+        }
+        
+        .specialty-card:hover .outline-text {
+            -webkit-text-stroke: 1px var(--brand-primary);
+            color: rgba(59, 130, 246, 0.05);
+        }
+
+        /* أنيميشن الدخول */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .animate-entrance {
+            animation: slideUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+</head>
+<body class="scanlines">
+
+    <div class="bg-grid"></div>
+    <div class="neon-aura top-[-200px] right-[-100px]"></div>
+    <div class="neon-aura bottom-[-200px] left-[-100px]"></div>
+
+    <nav class="flex justify-between items-center p-10 relative z-50">
+        <div class="flex items-center gap-4">
+            <div class="relative">
+                <div class="w-10 h-10 border-2 border-blue-500 rounded-full animate-spin-slow"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_10px_#3b82f6]"></div>
+                </div>
+            </div>
+            <span class="eng-font font-black tracking-[0.5em] text-[10px] opacity-50">YIC_CORE_INTERFACE_V2</span>
+        </div>
+        <div class="eng-font text-xs font-bold border-l border-white/10 pl-4 opacity-40">2026 // EST.</div>
+    </nav>
+
+    <main class="container mx-auto px-6 relative z-20">
+        <header class="text-center mt-10 mb-20 animate-entrance">
+            <h1 class="eng-font font-black text-6xl md:text-9xl tracking-tighter leading-none">
+                CHOOSE <br> 
+                <span class="outline-text block" style="font-size: 0.8em;">SPECIALTY</span>
+            </h1>
+            <p class="mt-6 eng-font text-blue-500 font-bold tracking-[1em] text-xs uppercase opacity-80">Deploying Academic Path</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
+            
+            <div class="specialty-card p-8 group cursor-pointer animate-entrance" style="animation-delay: 0.2s;" onclick="location.href='ectp.html'">
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-12">
+                        <i class="fa-solid fa-satellite-dish text-4xl text-blue-500 group-hover:scale-110 transition-transform"></i>
+                        <span class="eng-font text-[10px] text-white/20 group-hover:text-blue-500 transition-colors">OS_DEPLOY_01</span>
+                    </div>
+                    <h2 class="eng-font text-3xl font-bold mb-4">ECTP</h2>
+                    <p class="text-white/40 text-sm leading-relaxed mb-10 h-12">أنظمة الإلكترونيات والاتصالات المتطورة.</p>
+                    
+                    <div class="w-full h-[1px] bg-white/5 group-hover:bg-blue-500/50 transition-colors mb-6"></div>
+                    
+                    <div class="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                        <span class="eng-font text-[10px] font-black text-blue-500 tracking-widest uppercase">Launch_Sequence</span>
+                        <i class="fa-solid fa-arrow-left text-blue-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="specialty-card p-8 group cursor-pointer animate-entrance border-t-2 border-t-blue-500/20" style="animation-delay: 0.4s;" onclick="location.href='ictp.html'">
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-12">
+                        <i class="fa-solid fa-microchip text-4xl text-blue-500 group-hover:scale-110 transition-transform"></i>
+                        <span class="eng-font text-[10px] text-white/20 group-hover:text-blue-500 transition-colors">OS_DEPLOY_02</span>
+                    </div>
+                    <h2 class="eng-font text-3xl font-bold mb-4">ICTP</h2>
+                    <p class="text-white/40 text-sm leading-relaxed mb-10 h-12">تقنية الآلات الدقيقة والتحكم الصناعي.</p>
+                    
+                    <div class="w-full h-[1px] bg-white/5 group-hover:bg-blue-500/50 transition-colors mb-6"></div>
+                    
+                    <div class="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                        <span class="eng-font text-[10px] font-black text-blue-500 tracking-widest uppercase">Launch_Sequence</span>
+                        <i class="fa-solid fa-arrow-left text-blue-500"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="specialty-card p-8 group cursor-pointer animate-entrance" style="animation-delay: 0.6s;" onclick="location.href='mectp.html'">
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-12">
+                        <i class="fa-solid fa-robot text-4xl text-blue-500 group-hover:scale-110 transition-transform"></i>
+                        <span class="eng-font text-[10px] text-white/20 group-hover:text-blue-500 transition-colors">OS_DEPLOY_03</span>
+                    </div>
+                    <h2 class="eng-font text-3xl font-bold mb-4">MecTP</h2>
+                    <p class="text-white/40 text-sm leading-relaxed mb-10 h-12">هندسة الميكاترونكس والنظم الذكية.</p>
+                    
+                    <div class="w-full h-[1px] bg-white/5 group-hover:bg-blue-500/50 transition-colors mb-6"></div>
+                    
+                    <div class="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
+                        <span class="eng-font text-[10px] font-black text-blue-500 tracking-widest uppercase">Launch_Sequence</span>
+                        <i class="fa-solid fa-arrow-left text-blue-500"></i>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="fixed bottom-0 left-0 w-full p-6 flex justify-between items-end opacity-20 pointer-events-none">
+        <div class="eng-font text-[8px] leading-relaxed">
+            CPU_LOAD: 2.4% <br>
+            NET_STATUS: ACTIVE <br>
+            BUFFER_STREAM: 1024KB/S
+        </div>
+        <div class="eng-font text-[8px] text-right">
+            ALRASASI_ENGINEERING_VISION // 2026 <br>
+            ALL RIGHTS RESERVED TO CORE_LABS
+        </div>
+    </footer>
+
+    <script>
+        // تأثير تتبع الماوس لخلفية النيون (إبداع إضافي بالـ JS)
+        document.addEventListener('mousemove', (e) => {
+            const aura = document.querySelector('.neon-aura');
+            const x = e.clientX;
+            const y = e.clientY;
+            aura.style.transform = `translate(${x/20}px, ${y/20}px)`;
+        });
+    </script>
+
+</body>
+</html>

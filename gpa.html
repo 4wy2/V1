@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام الدرجات الذكي</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+<style>
+body {
+    font-family: 'Cairo', sans-serif;
+    background:#060714;
+    color:white;
+}
+.glass {
+    background: rgba(15,23,42,.6);
+    backdrop-filter: blur(12px);
+    border:1px solid rgba(255,255,255,.05);
+}
+.input {
+    background: rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.1);
+    color:white;
+}
+.input:focus {
+    outline:none;
+    border-color:#6366f1;
+}
+.hidden { display:none; }
+</style>
+</head>
+
+<body class="p-4 sm:p-6 md:p-12 min-h-screen">
+
+<div class="max-w-5xl mx-auto space-y-10">
+
+<!-- العنوان -->
+<header class="text-center space-y-3">
+    <h1 class="text-3xl sm:text-4xl md:text-6xl font-black italic">
+        نظام الدرجات الذكي
+    </h1>
+    <p class="text-xs tracking-widest text-indigo-400 font-bold">
+        SMART ACADEMIC SYSTEM
+    </p>
+</header>
+
+<!-- الصفحة الرئيسية -->
+<section id="mainView" class="space-y-6">
+
+<div class="flex justify-between items-center">
+    <h2 class="font-black text-xl">الأترام</h2>
+    <button onclick="toggle('semesterForm')" class="px-4 py-2 rounded-full bg-indigo-600 text-sm font-bold">
+        ترم جديد
+    </button>
+</div>
+
+<!-- إضافة ترم -->
+<div id="semesterForm" class="hidden glass p-6 rounded-3xl space-y-4">
+    <input id="semesterName" class="input w-full rounded-xl px-4 py-3"
+           placeholder="اسم الترم">
+    <button onclick="addSemester()" class="w-full py-3 rounded-xl bg-indigo-600 font-black">
+        حفظ
+    </button>
+</div>
+
+<div id="semesterList" class="space-y-6"></div>
+
+</section>
+
+<!-- صفحة المادة -->
+<section id="courseView" class="hidden space-y-6">
+
+<button onclick="back()" class="text-sm text-indigo-400">← رجوع</button>
+
+<div class="glass rounded-3xl p-8 text-center space-y-3">
+    <div id="totalScore" class="text-6xl font-black">0%</div>
+    <h2 id="courseTitle" class="text-2xl font-black"></h2>
+    <p id="weightInfo" class="text-xs text-indigo-400"></p>
+</div>
+
+<!-- إضافة قسم -->
+<div class="glass p-6 rounded-3xl space-y-4">
+    <h3 class="font-bold text-indigo-400">إضافة قسم</h3>
+    <input id="catName" class="input w-full rounded-xl px-4 py-3" placeholder="اسم القسم">
+    <input id="catWeight" type="number" class="input w-full rounded-xl px-4 py-3" placeholder="الوزن %">
+    <button onclick="addCategory()" class="w-full py-3 rounded-xl bg-indigo-600 font-black">
+        إضافة
+    </button>
+</div>
+
+<div id="categoryList" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+
+</section>
+
+</div>
+
+<script>
+/* ================== DATABASE ================== */
+let db = [];
+try {
+    db = JSON.parse(localStorage.getItem("grades_db")) || [];
+} catch { db = []; }
+
+let currentSemester = null;
+let currentCourse = null;
+
+const save = () => localStorage.setItem("grades_db", JSON.stringify(db));
+const toggle = id => document.getElementById(id).classList.toggle("hidden");
+
+/* ================== SEMESTERS ================== */
+function addSemester() {
+    const name = semesterName.value.trim();
+    if (!name) return alert("أدخل اسم الترم");
+    db.push({ name, courses: [] });
+    semesterName.value = "";
+    toggle("semesterForm");
+    save(); renderSemesters();
+}
+
+function renderSemesters() {
+    semesterList.innerHTML = "";
+    db.forEach((s, i) => {
+        semesterList.innerHTML += `
+        <div class="glass p-6 rounded-3xl space-y-4">
+            <div class="flex justify-between">
+                <h3 class="font-black text-xl">${s.name}</h3>
+                <button onclick="addCourse(${i})" class="text-sm text-indigo-400">
+                    + مادة
+                </button>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${s.courses.map((c, j) => `
+                <div onclick="openCourse(${i},${j})"
+                     class="p-4 rounded-2xl bg-white/5 cursor-pointer hover:bg-indigo-500/10">
+                    ${c.name}
+                </div>
+                `).join("")}
+            </div>
+        </div>`;
+    });
+}
+
+/* ================== COURSES ================== */
+function addCourse(i) {
+    const name = prompt("اسم المادة");
+    if (!name) return;
+    db[i].courses.push({ name, categories: [] });
+    save(); renderSemesters();
+}
+
+function openCourse(s, c) {
+    currentSemester = s;
+    currentCourse = c;
+    mainView.classList.add("hidden");
+    courseView.classList.remove("hidden");
+    renderCourse();
+}
+
+function back() {
+    courseView.classList.add("hidden");
+    mainView.classList.remove("hidden");
+    renderSemesters();
+}
+
+/* ================== CATEGORIES ================== */
+function addCategory() {
+    const name = catName.value.trim();
+    const weight = Number(catWeight.value);
+
+    if (!name || weight <= 0) return alert("بيانات غير صحيحة");
+
+    const course = db[currentSemester].courses[currentCourse];
+    const used = course.categories.reduce((a,c)=>a+c.weight,0);
+
+    if (used + weight > 100)
+        return alert("مجموع الأوزان لا يتجاوز 100%");
+
+    course.categories.push({ name, weight, items: [] });
+    catName.value = ""; catWeight.value = "";
+    save(); renderCourse();
+}
+
+/* ================== RENDER COURSE ================== */
+function renderCourse() {
+    const course = db[currentSemester].courses[currentCourse];
+    courseTitle.innerText = course.name;
+
+    let total = 0;
+    let used = 0;
+    categoryList.innerHTML = "";
+
+    course.categories.forEach((cat, i) => {
+        used += cat.weight;
+
+        let score = 0, max = 0;
+        cat.items.forEach(it => {
+            score += it.score;
+            max += it.max;
+        });
+
+        const avg = max ? (score / max) * cat.weight : 0;
+        total += avg;
+
+        categoryList.innerHTML += `
+        <div class="glass p-6 rounded-3xl space-y-3">
+            <div class="flex justify-between">
+                <h4 class="font-black">${cat.name}</h4>
+                <span class="text-xs text-indigo-400">${cat.weight}%</span>
+            </div>
+            <button onclick="addItem(${i})"
+                    class="w-full py-2 rounded-xl bg-indigo-500/20 text-indigo-300">
+                إضافة درجة
+            </button>
+            ${cat.items.map(it=>`
+                <div class="flex justify-between text-sm bg-white/5 p-3 rounded-xl">
+                    <span>${it.name}</span>
+                    <span>${it.score}/${it.max}</span>
+                </div>
+            `).join("")}
+        </div>`;
+    });
+
+    totalScore.innerText = total.toFixed(1) + "%";
+    weightInfo.innerText = `المستخدم ${used}% من السيلبس`;
+}
+
+/* ================== ITEMS ================== */
+function addItem(i) {
+    const name = prompt("اسم المهمة");
+    const score = Number(prompt("درجتك"));
+    const max = Number(prompt("من كم"));
+
+    if (!name || isNaN(score) || isNaN(max)) return;
+
+    db[currentSemester].courses[currentCourse]
+      .categories[i].items.push({ name, score, max });
+
+    save(); renderCourse();
+}
+
+renderSemesters();
+</script>
+
+</body>
+</html>

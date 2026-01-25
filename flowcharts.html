@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>دليل المنصة - AL-RASSASI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg: #03040b;
+            --glass: rgba(15, 23, 42, 0.8);
+            --stroke: rgba(255, 255, 255, 0.08);
+        }
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg);
+            color: white;
+            overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* كرات خلفية متحركة */
+        .blob {
+            position: fixed;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: -1;
+            filter: blur(40px);
+            animation: move 15s infinite alternate;
+        }
+
+        @keyframes move {
+            from { transform: translate(-10%, -10%); }
+            to { transform: translate(20%, 20%); }
+        }
+
+        .glass-card {
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--stroke);
+        }
+
+        /* أنيميشن الظهور التدريجي */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* تأثير النقر للجوال */
+        .tap-active:active {
+            transform: scale(0.97);
+            background: rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-12">
+
+    <div class="blob" style="top: -50px; right: -50px;"></div>
+    <div class="blob" style="bottom: -50px; left: -50px; animation-delay: -7s;"></div>
+
+    <div class="max-w-5xl mx-auto">
+        
+        <nav class="mb-10 reveal">
+            <a href="index.html" class="inline-flex items-center gap-2 text-white/40 font-bold text-xs uppercase tracking-widest hover:text-indigo-400 transition-colors">
+                <i class="fa-solid fa-arrow-right"></i>
+                العودة للرئيسية
+            </a>
+        </nav>
+
+        <header class="mb-16 text-right reveal">
+            <span class="text-indigo-400 font-black tracking-[0.3em] text-[10px] uppercase mb-3 block">Engineered by AL-RASSASI</span>
+            <h1 class="text-4xl md:text-7xl font-black mb-6 leading-tight">
+                دليل <span class="text-transparent bg-clip-text bg-gradient-to-l from-indigo-400 to-cyan-400">المنصة الذكية</span>
+            </h1>
+            <p class="text-white/50 text-lg md:text-xl max-w-2xl leading-relaxed">
+                نظام تتبع ذكي صُمم لتمكين المهندس من إدارة مسيرته الأكاديمية بوضوح فائق ودقة متناهية.
+            </p>
+        </header>
+
+        <div class="space-y-6 mb-24">
+            <div class="glass-card p-6 md:p-10 rounded-[2.5rem] reveal active">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
+                    
+                    <div class="order-first lg:order-last flex items-center justify-center bg-[#050810]/50 rounded-[2rem] border border-white/5 relative overflow-hidden min-h-[300px] md:min-h-[400px]">
+                        <div class="absolute inset-0 bg-radial-at-t from-indigo-500/10 via-transparent to-transparent"></div>
+                        
+                        <div class="relative z-10 flex flex-col items-center scale-[0.85] md:scale-100">
+                            <div class="relative">
+                                <div id="top-arrow" class="absolute -top-12 left-1/2 -translate-x-1/2 flex flex-col items-center opacity-0 transition-all duration-700">
+                                    <div class="w-1 h-8 bg-indigo-400/50"></div>
+                                    <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] border-t-indigo-400"></div>
+                                </div>
+                                <div id="side-arrow" class="absolute -right-12 top-1/2 -translate-y-1/2 flex items-center opacity-0 transition-all duration-700">
+                                    <div class="w-8 h-1 bg-amber-400/50"></div>
+                                    <div class="w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-r-[8px] border-r-amber-400"></div>
+                                </div>
+
+                                <div id="main-module" class="w-40 h-28 bg-[#161e2d] border-[1.5px] border-white/10 rounded-2xl flex flex-col items-center justify-center relative transition-all duration-1000 shadow-2xl">
+                                    <div id="module-check" class="absolute top-2 right-3 opacity-0 scale-50 transition-all">
+                                        <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+                                    </div>
+                                    <span class="text-[7px] text-white/20 font-bold tracking-widest mb-1 uppercase">Academic Module</span>
+                                    <h4 id="module-code" class="text-xl font-black text-indigo-400 transition-colors">ELET 102</h4>
+                                    <div id="fake-cursor" class="absolute -bottom-4 -right-2 text-white/20 text-lg transition-all duration-1000">
+                                        <i class="fa-solid fa-mouse-pointer"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-8 bg-black/40 border border-white/5 px-4 py-1.5 rounded-full">
+                                <p id="status-display" class="text-[8px] font-mono text-indigo-300/60 uppercase tracking-widest">System Ready</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-8">
+                        <div class="flex gap-5">
+                            <div class="h-10 w-10 shrink-0 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 font-bold">1</div>
+                            <div>
+                                <h4 class="font-bold text-white mb-1">الاستعلام المرئي</h4>
+                                <p class="text-white/40 text-xs leading-relaxed">نقرة واحدة تضيء المسارات المتصلة لكشف المتطلبات السابقة والقادمة.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-5">
+                            <div class="h-10 w-10 shrink-0 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 font-bold">2</div>
+                            <div>
+                                <h4 class="font-bold text-white mb-1">تتبع الإنجاز</h4>
+                                <p class="text-white/40 text-xs leading-relaxed">نقرتين سريعة لتحويل المادة للون الأخضر وحفظ تقدمك الدراسي.</p>
+                            </div>
+                        </div>
+                        <div class="flex gap-5">
+                            <div class="h-10 w-10 shrink-0 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-400 font-bold">3</div>
+                            <div>
+                                <h4 class="font-bold text-white mb-1">الملاحة الذكية</h4>
+                                <p class="text-white/40 text-xs leading-relaxed">حرية كاملة في السحب والتكبير لاستكشاف جميع المستويات الدراسية.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <section class="mb-24 reveal">
+            <h2 class="text-2xl font-black mb-8 border-r-4 border-indigo-500 pr-4">بوابة التخصصات</h2>
+            
+            <div class="space-y-4">
+                <a href="EEflowchart.html" class="tap-active flex items-center justify-between p-6 bg-indigo-600/10 border border-indigo-500/30 rounded-2xl hover:border-indigo-500 transition-all group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                            <i class="fa-solid fa-graduation-cap text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-lg md:text-xl">الهندسة الكهربائية (EE)</h3>
+                            <span class="text-[10px] text-indigo-300/60 font-bold uppercase tracking-widest">Bachelor Program</span>
+                        </div>
+                    </div>
+                    <i class="fa-solid fa-chevron-left text-indigo-500 group-hover:-translate-x-2 transition-transform"></i>
+                </a>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a href="EPTflowchart.html" class="tap-active flex items-center gap-4 p-5 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all">
+                        <div class="w-10 h-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400">
+                            <i class="fa-solid fa-bolt"></i>
+                        </div>
+                        <span class="text-sm font-bold">تقنية القوى الكهربائية (EPT)</span>
+                    </a>
+                    <a href="ECTflowchart.html" class="tap-active flex items-center gap-4 p-5 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all">
+                        <div class="w-10 h-10 bg-cyan-500/10 rounded-lg flex items-center justify-center text-cyan-400">
+                            <i class="fa-solid fa-microchip"></i>
+                        </div>
+                        <span class="text-sm font-bold">تقنية الإلكترونيات (ECT)</span>
+                    </a>
+                    <a href="ICTflowchart.html" class="tap-active flex items-center gap-4 p-5 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all">
+                        <div class="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-400">
+                            <i class="fa-solid fa-tower-broadcast"></i>
+                        </div>
+                        <span class="text-sm font-bold">تقنية الآلات والتحكم (ICT)</span>
+                    </a>
+                    <a href="MechT.html" class="tap-active flex items-center gap-4 p-5 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all">
+                        <div class="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center text-orange-400">
+                            <i class="fa-solid fa-gears"></i>
+                        </div>
+                        <span class="text-sm font-bold">تقنية الميكاترونيكس (MechT)</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-24 reveal">
+            <h2 class="text-2xl font-black mb-8 border-r-4 border-amber-500 pr-4">آفاق المستقبل</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="glass-card p-8 rounded-[2rem] relative overflow-hidden group hover:border-indigo-500/50 transition-all">
+                    <div class="h-1 w-full bg-indigo-500 absolute top-0 left-0"></div>
+                    <i class="fa-solid fa-sync text-indigo-400 text-xl mb-4 block"></i>
+                    <h5 class="font-bold mb-2">مزامنة البيانات</h5>
+                    <p class="text-[11px] text-white/40 leading-relaxed">تخزين تقدمك الدراسي سحابياً للوصول إليه من أي مكان.</p>
+                </div>
+                <div class="glass-card p-8 rounded-[2rem] relative overflow-hidden group hover:border-cyan-500/50 transition-all">
+                    <div class="h-1 w-full bg-cyan-500 absolute top-0 left-0"></div>
+                    <i class="fa-solid fa-chart-line text-cyan-400 text-xl mb-4 block"></i>
+                    <h5 class="font-bold mb-2">تحليل الإنجاز</h5>
+                    <p class="text-[11px] text-white/40 leading-relaxed">رسوم بيانية ذكية توضح نسبة الإنجاز والزمن المتبقي.</p>
+                </div>
+                <div class="glass-card p-8 rounded-[2rem] relative overflow-hidden group hover:border-purple-500/50 transition-all">
+                    <div class="h-1 w-full bg-purple-500 absolute top-0 left-0"></div>
+                    <i class="fa-solid fa-book text-purple-400 text-xl mb-4 block"></i>
+                    <h5 class="font-bold mb-2">المكتبة الرقمية</h5>
+                    <p class="text-[11px] text-white/40 leading-relaxed">توفير الكتب والمراجع الدراسية لكل مادة بشكل مباشر.</p>
+                </div>
+            </div>
+        </section>
+
+        <footer class="text-center py-10 opacity-30">
+            <p class="text-[9px] font-black tracking-[0.4em] uppercase">Designed by AL-RASSASI © 2026</p>
+        </footer>
+    </div>
+
+    <script>
+        // أنيميشن المحاكاة (نفس الأكواد السابقة بدون تعديل)
+        function startShowcase() {
+            const module = document.getElementById('main-module');
+            const check = document.getElementById('module-check');
+            const sideArrow = document.getElementById('side-arrow');
+            const topArrow = document.getElementById('top-arrow');
+            const status = document.getElementById('status-display');
+            const cursor = document.getElementById('fake-cursor');
+            const code = document.getElementById('module-code');
+
+            if (!module) return;
+
+            const reset = () => {
+                module.style.borderColor = "rgba(255,255,255,0.1)";
+                module.style.backgroundColor = "#161e2d";
+                code.style.color = "#818cf8";
+                check.style.opacity = "0";
+                sideArrow.style.opacity = "0";
+                topArrow.style.opacity = "0";
+                cursor.style.transform = "translate(0, 0)";
+                status.innerText = "System Ready";
+            };
+
+            setTimeout(() => {
+                cursor.style.transform = "translate(-15px, -30px)";
+                status.innerText = "Querying Paths...";
+                sideArrow.style.opacity = "1";
+                topArrow.style.opacity = "1";
+                module.style.borderColor = "#fbbf24";
+            }, 1000);
+
+            setTimeout(() => {
+                module.style.borderColor = "#10b981";
+                module.style.backgroundColor = "rgba(16, 185, 129, 0.05)";
+                code.style.color = "#10b981";
+                check.style.opacity = "1";
+                check.style.transform = "scale(1)";
+                status.innerText = "Status: Completed";
+            }, 3500);
+
+            setTimeout(() => {
+                reset();
+                setTimeout(startShowcase, 1000);
+            }, 7000);
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) entry.target.classList.add('active');
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+
+        window.addEventListener('load', () => {
+            setTimeout(startShowcase, 500);
+        });
+    </script>
+</body>
+</html>

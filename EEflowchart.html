@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>EE Degree Plan - Progress Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #050810;
+      --card-bg: rgba(15, 23, 42, 0.8);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f1f5f9;
+      --text-muted: #64748b;
+      --accent-blue: #38bdf8;
+      --accent-yellow: #fbbf24;
+      --accent-green: #22c55e;
+      --card-width: 135px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Cairo', sans-serif;
+      overflow: hidden; 
+      height: 100vh;
+      width: 100vw;
+      touch-action: none;
+    }
+
+    header {
+      padding: 20px;
+      text-align: center;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: rgba(5, 8, 16, 0.95);
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .legend {
+      display: inline-flex;
+      gap: 20px;
+      font-size: 0.8rem;
+      margin-top: 10px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    .viewport {
+      width: 100vw;
+      height: 100vh;
+      cursor: grab;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .viewport:active { cursor: grabbing; }
+
+    .flowchart-wrapper {
+      position: absolute;
+      transform-origin: center center; 
+      padding: 2000px;
+      will-change: transform;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- تعديل السنوات --- */
+    .year-section {
+  display: flex;
+  margin-bottom: 80px; /* المسافة بين السنوات */
+  position: relative;
+  padding-bottom: 75px; /* مسافة لترك مساحة للخط في المنتصف */
+}
+
+/* رسم الخط الكامل باستخدام Pseudo-element */
+.year-section::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 80px;  /* يبدأ بعد السايدبار قليلاً */
+  right: 40px; /* ينتهي قبل الحافة اليمنى */
+  height: 2px; /* سمك الخط */
+  /* تدرج لوني: شفاف -> لون خفيف -> شفاف */
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.15) 20%, 
+    rgba(255, 255, 255, 0.15) 80%, 
+    transparent
+  );
+  border-radius: 2px;
+}
+
+/* إخفاء الخط بعد السنة الأخيرة (Senior) */
+.year-section:last-of-type::after {
+  display: none;
+}
+    .year-sidebar {
+      width: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent);
+      border-right: 3px solid #333; /* سيتم تغيير اللون في HTML */
+      flex-shrink: 0;
+    }
+    .year-label {
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-weight: 900;
+      letter-spacing: 5px;
+      font-size: 1.2rem;
+      transition: all 0.3s;
+    }
+
+    .semesters-container {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 75px; 
+    }
+
+    /* --- تعديل السمسترات --- */
+    .semester-row { 
+        display: flex; 
+        align-items: center; 
+        padding-left: 30px; 
+        transition: all 0.3s ease;
+    }
+    .sem-indicator {
+      width: 100px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      flex-shrink: 0;
+      color: var(--text-muted); /* لون موحد هادئ */
+      border-left: 2px solid rgba(255,255,255,0.05);
+      padding-left: 15px;
+      letter-spacing: 2px;
+      transition: all 0.3s ease;
+    }
+    .semester-row:hover .sem-indicator {
+        color: var(--text-main);
+        border-left-color: rgba(255,255,255,0.3);
+    }
+
+    .course-list { display: flex; gap: 50px; }
+
+    .card {
+      width: var(--card-width);
+      height: 85px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      z-index: 10;
+      transition: all 0.3s;
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    .card.selected { 
+        border-color: var(--accent-yellow) !important; 
+        box-shadow: 0 0 25px rgba(251, 191, 36, 0.5); 
+        z-index: 100;
+        background: #1e293b;
+    }
+
+    .card.completed {
+      border-color: var(--accent-green) !important;
+      background: rgba(34, 197, 94, 0.2) !important;
+      box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+    }
+    .card.completed::after {
+      content: '✓';
+      position: absolute;
+      top: 5px;
+      right: 8px;
+      color: var(--accent-green);
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .card.completed .code { color: var(--accent-green) !important; }
+
+    .card.dimmed { opacity: 0.2; filter: grayscale(0.5); }
+    
+    .code { font-family: 'JetBrains Mono'; font-size: 0.85rem; color: var(--accent-blue); font-weight: 800; pointer-events: none; }
+    .name { font-size: 0.6rem; color: #cbd5e1; margin-top: 5px; font-weight: 600; line-height: 1.2; padding: 0 8px; pointer-events: none; }
+
+    #svg-canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    path { transition: opacity 0.4s ease; stroke-linecap: round; }
+    path.active-path { opacity: 1 !important; stroke-width: 3; filter: drop-shadow(0 0 5px var(--accent-blue)); }
+    path.faded { opacity: 0.02 !important; }
+
+    .zoom-controls {
+      position: fixed;
+      bottom: 30px;
+      right: 30px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 2000;
+    }
+    
+    .zoom-btn {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.9);
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      cursor: pointer;
+      backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  
+  <h2 style="margin:0; font-weight:900; letter-spacing: 2px; color: #fff;">ELECTRICAL ENGINEERING STUDY PLAN</h2>
+<div style="font-size: 0.85rem; color: #fff; font-weight: 600; letter-spacing: 1px;">
+        Designed & Developed by <span style="color: #38bdf8; border-bottom: 1px solid rgba(56, 189, 248, 0.3);">AL-RASSASI</span>
+    </div>
+  <div class="legend">
+    <div class="legend-item"><div class="dot" style="background:var(--accent-blue)"></div> Prerequisite</div>
+    <div class="legend-item"><div class="dot" style="background:var(--accent-yellow)"></div> Co-requisite</div>
+    <div class="legend-item"><div class="dot" style="background:var(--accent-green)"></div> Completed (Double Click)</div>
+  </div>
+</header>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" onclick="manualZoom(1.2)">+</button>
+  <button class="zoom-btn" onclick="manualZoom(0.8)">-</button>
+  <button class="zoom-btn" onclick="resetView()" style="font-size: 12px;">RESET</button>
+</div>
+
+<div class="viewport" id="viewport">
+  <div class="flowchart-wrapper" id="main-wrapper">
+    <svg id="svg-canvas"></svg>
+
+    <div class="year-section">
+      <div class="year-sidebar"><span class="year-label" style="color:var(--text-main)";">FRESHMAN</span></div>
+      <div class="semesters-container">
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 1</div>
+          <div class="course-list">
+            <div class="card" id="ARB101"><div class="code">ARB 101</div><div class="name">Practical Grammar</div></div>
+            <div class="card" id="CHEM101"><div class="code">CHEM 101</div><div class="name">General Chemistry I</div></div>
+            <div class="card" id="MA101"><div class="code">MA 101</div><div class="name">Calculus I</div></div>
+            <div class="card" id="PHY101"><div class="code">PHY 101</div><div class="name">General Physics I</div></div>
+            <div class="card" id="ESP101"><div class="code">ESP 101</div><div class="name">Intro to Academic Discourse</div></div>
+            <div class="card" id="HPE101"><div class="code">HPE 101</div><div class="name">Health & Physical Ed</div></div>
+          </div>
+        </div>
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 2</div>
+          <div class="course-list">
+            <div class="card" id="ARB102"><div class="code">ARB 102</div><div class="name">Objective Writing</div></div>
+            <div class="card" id="CSE101"><div class="code">CSE 101</div><div class="name">Intro to Programming</div></div>
+            <div class="card" id="MA102"><div class="code">MA 102</div><div class="name">Calculus II</div></div>
+            <div class="card" id="PHY102"><div class="code">PHY 102</div><div class="name">General Physics II</div></div>
+            <div class="card" id="ESP102"><div class="code">ESP 102</div><div class="name">Intro to Report Writing</div></div>
+            <div class="card" id="ISL101"><div class="code">ISL 101</div><div class="name">Belief & Consequences</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="year-section">
+      <div class="year-sidebar"><span class="year-label" style="color:var(--accent-blue)";">SOPHOMORE</span></div>
+      <div class="semesters-container">
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 3</div>
+          <div class="course-list">
+            <div class="card" id="CSE221"><div class="code">CSE 221</div><div class="name">Digital Logical Design</div></div>
+            <div class="card" id="EE201"><div class="code">EE 201</div><div class="name">Electrical Circuits I</div></div>
+            <div class="card" id="ESP201"><div class="code">ESP 201</div><div class="name">Academic Communication</div></div>
+            <div class="card" id="ISL201"><div class="code">ISL 201</div><div class="name">Professional Ethics</div></div>
+            <div class="card" id="MA201"><div class="code">MA 201</div><div class="name">Calculus III</div></div>
+            <div class="card" id="MA202"><div class="code">MA 202</div><div class="name">Prob & Stats</div></div>
+          </div>
+        </div>
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 4</div>
+          <div class="course-list">
+            <div class="card" id="ARB201"><div class="code">ARB 201</div><div class="name">Literary Styles</div></div>
+            <div class="card" id="CSE201"><div class="code">CSE 201</div><div class="name">Intro to Data Science</div></div>
+            <div class="card" id="EE202"><div class="code">EE 202</div><div class="name">Electronics I</div></div>
+            <div class="card" id="EE203"><div class="code">EE 203</div><div class="name">Electronics I Lab</div></div>
+            <div class="card" id="EE204"><div class="code">EE 204</div><div class="name">Signals and Systems</div></div>
+            <div class="card" id="EE205"><div class="code">EE 205</div><div class="name">Electric Circuits II</div></div>
+            <div class="card" id="EE206"><div class="code">EE 206</div><div class="name">Elec Circuits II Lab</div></div>
+            <div class="card" id="MA203"><div class="code">MA 203</div><div class="name">Differential Equations</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="year-section">
+      <div class="year-sidebar"><span class="year-label" style="color:var(--accent-green);">JUNIOR</span></div>
+      <div class="semesters-container">
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 5</div>
+          <div class="course-list">
+            <div class="card" id="CSE301"><div class="code">CSE 301</div><div class="name">Intro to AI</div></div>
+            <div class="card" id="EE301"><div class="code">EE 301</div><div class="name">Electronics II</div></div>
+            <div class="card" id="EE302"><div class="code">EE 302</div><div class="name">Elec Energy Engineering</div></div>
+            <div class="card" id="EE303"><div class="code">EE 303</div><div class="name">Elec Energy Lab</div></div>
+            <div class="card" id="EE304"><div class="code">EE 304</div><div class="name">Control Engineering</div></div>
+            <div class="card" id="EE305"><div class="code">EE 305</div><div class="name">Control Eng Lab</div></div>
+            <div class="card" id="ISL301"><div class="code">ISL 301</div><div class="name">Human Rights</div></div>
+            <div class="card" id="PHY321"><div class="code">PHY 321</div><div class="name">Electricity & Mag</div></div>
+          </div>
+        </div>
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 6</div>
+          <div class="course-list">
+            <div class="card" id="EE300"><div class="code">EE 300</div><div class="name">Design Project I</div></div>
+            <div class="card" id="EE306"><div class="code">EE 306</div><div class="name">Fundamentals of EE Des</div></div>
+            <div class="card" id="EE307"><div class="code">EE 307</div><div class="name">Comm Engineering</div></div>
+            <div class="card" id="EE308"><div class="code">EE 308</div><div class="name">Comm Eng Lab</div></div>
+            <div class="card" id="EE309"><div class="code">EE 309</div><div class="name">Digital Systems Eng</div></div>
+            <div class="card" id="EE310"><div class="code">EE 310</div><div class="name">Digital Systems Lab</div></div>
+            <div class="card" id="MA301"><div class="code">MA 301</div><div class="name">Numerical Methods</div></div>
+            <div class="card" id="MS301"><div class="code">MS 301</div><div class="name">Business & Entrepreneur</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="year-section">
+      <div class="year-sidebar"><span class="year-label" style="color:var(--accent-yellow);">SENIOR</span></div>
+      <div class="semesters-container">
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 7</div>
+          <div class="course-list">
+            <div class="card" id="EE400"><div class="code">EE 400</div><div class="name">Design Project II</div></div>
+            <div class="card" id="EE401"><div class="code">EE 401</div><div class="name">EM Waves & App</div></div>
+            <div class="card" id="EE402"><div class="code">EE 402</div><div class="name">EM Waves Lab</div></div>
+            <div class="card" id="EE4xx_1"><div class="code">EE 4XX</div><div class="name">Elective I</div></div>
+            <div class="card" id="EE4xx_2"><div class="code">EE 4XX</div><div class="name">Elective II</div></div>
+            <div class="card" id="EE4xx_3"><div class="code">EE 4XX</div><div class="name">Elective III</div></div>
+          </div>
+        </div>
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 8</div>
+          <div class="course-list">
+            <div class="card" id="EE490"><div class="code">EE 490</div><div class="name">Internship (Co-op)</div></div>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const wrapper = document.getElementById('main-wrapper');
+const viewport = document.getElementById('viewport');
+const svg = document.getElementById('svg-canvas');
+
+let scale = 0.7;
+let translateX = 0;
+let translateY = 0;
+let isDragging = false;
+let startX, startY;
+let initialPinchDist = null;
+
+const connections = [
+  // --- 1st Year ---
+  { from: 'MA101', to: 'PHY101', type: 'co' },
+  { from: 'MA101', to: 'MA102', type: 'pre' },
+  { from: 'PHY101', to: 'PHY102', type: 'pre' },
+  { from: 'MA102', to: 'PHY102', type: 'co' },
+  { from: 'ESP101', to: 'ESP102', type: 'pre' },
+  { from: 'ARB101', to: 'ARB102', type: 'pre' },
+
+  // --- 2nd Year ---
+  { from: 'MA102', to: 'MA201', type: 'pre' },
+  { from: 'MA102', to: 'MA202', type: 'pre' },
+  { from: 'ESP102', to: 'ESP201', type: 'pre' },
+  { from: 'ISL101', to: 'ISL201', type: 'pre' },
+  { from: 'PHY102', to: 'CSE221', type: 'pre' },
+  { from: 'PHY102', to: 'EE201', type: 'pre' },
+  { from: 'MA102', to: 'EE201', type: 'pre' },
+  { from: 'MA102', to: 'MA203', type: 'pre' },
+  { from: 'CSE101', to: 'CSE201', type: 'pre' },
+  { from: 'MA202', to: 'CSE201', type: 'pre' },
+  { from: 'ARB102', to: 'ARB201', type: 'pre' },
+  { from: 'EE201', to: 'EE202', type: 'pre' },
+  { from: 'CSE221', to: 'EE202', type: 'pre' },
+  { from: 'EE202', to: 'EE203', type: 'co' },
+  { from: 'EE201', to: 'EE204', type: 'pre' },
+  { from: 'EE201', to: 'EE205', type: 'pre' },
+  { from: 'EE205', to: 'EE206', type: 'co' },
+
+  // --- 3rd Year ---
+  { from: 'CSE201', to: 'CSE301', type: 'pre' },
+  { from: 'ISL201', to: 'ISL301', type: 'pre' },
+  { from: 'MA201', to: 'PHY321', type: 'pre' },
+  { from: 'MA203', to: 'PHY321', type: 'pre' },
+  { from: 'PHY102', to: 'PHY321', type: 'pre' },
+  { from: 'EE202', to: 'EE301', type: 'pre' },
+  { from: 'EE205', to: 'EE302', type: 'pre' },
+  { from: 'EE302', to: 'EE303', type: 'co' },
+  { from: 'EE204', to: 'EE304', type: 'pre' },
+  { from: 'EE304', to: 'EE305', type: 'co' },
+  { from: 'CSE101', to: 'MA301', type: 'pre' },
+  { from: 'MA201', to: 'MA301', type: 'pre' },
+  { from: 'ESP201', to: 'MS301', type: 'pre' },
+  { from: 'EE202', to: 'EE306', type: 'pre' },
+  { from: 'EE202', to: 'EE307', type: 'pre' },
+  { from: 'EE307', to: 'EE308', type: 'co' },
+  { from: 'CSE101', to: 'EE309', type: 'pre' },
+  { from: 'CSE221', to: 'EE309', type: 'pre' },
+  { from: 'EE309', to: 'EE310', type: 'co' },
+  { from: 'ESP201', to: 'EE300', type: 'pre' },
+  { from: 'EE301', to: 'EE300', type: 'pre' },
+  { from: 'EE302', to: 'EE300', type: 'pre' },
+  { from: 'EE304', to: 'EE300', type: 'pre' },
+
+  // --- 4th Year ---
+  { from: 'PHY321', to: 'EE401', type: 'pre' },
+  { from: 'EE401', to: 'EE402', type: 'co' },
+  { from: 'EE300', to: 'EE4xx_1', type: 'pre' },
+  { from: 'EE300', to: 'EE4xx_2', type: 'pre' },
+  { from: 'EE300', to: 'EE4xx_3', type: 'pre' },
+  { from: 'MS301', to: 'EE400', type: 'pre' },
+  { from: 'EE306', to: 'EE400', type: 'pre' },
+  { from: 'EE300', to: 'EE400', type: 'pre' }
+];
+
+function updateTransform() {
+  wrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+}
+
+// السحب بالماوس
+viewport.addEventListener('mousedown', (e) => {
+  if (e.target.closest('.card')) return;
+  isDragging = true;
+  startX = e.clientX - translateX;
+  startY = e.clientY - translateY;
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  translateX = e.clientX - startX;
+  translateY = e.clientY - startY;
+  updateTransform();
+});
+
+window.addEventListener('mouseup', () => isDragging = false);
+
+// اللمس للجوال
+viewport.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 1) {
+    if (e.target.closest('.card')) return;
+    isDragging = true;
+    startX = e.touches[0].clientX - translateX;
+    startY = e.touches[0].clientY - translateY;
+  } else if (e.touches.length === 2) {
+    initialPinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive: false });
+
+viewport.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 1 && isDragging) {
+    translateX = e.touches[0].clientX - startX;
+    translateY = e.touches[0].clientY - startY;
+  } else if (e.touches.length === 2 && initialPinchDist) {
+    const currentDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const delta = currentDist / initialPinchDist;
+    scale = Math.min(Math.max(0.2, scale * delta), 3);
+    initialPinchDist = currentDist;
+  }
+  updateTransform();
+  e.preventDefault();
+}, { passive: false });
+
+viewport.addEventListener('touchend', () => {
+  isDragging = false;
+  initialPinchDist = null;
+});
+
+// الزوم
+viewport.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  scale = Math.min(Math.max(0.2, scale * delta), 3);
+  updateTransform();
+}, { passive: false });
+
+function manualZoom(factor) {
+  scale = Math.min(Math.max(0.2, scale * factor), 3);
+  updateTransform();
+}
+
+function resetView() {
+  const vWidth = viewport.clientWidth;
+  const vHeight = viewport.clientHeight;
+  
+  // 1. حساب أبعاد المحتوى الفعلي (السنوات والسمسترات)
+  // استخدمنا getBoundingClientRect للمحتوى الداخلي بدون تأثير التحويلات الحالية
+  const contentWidth = wrapper.scrollWidth - 4000; // طرحنا البادينج الإضافي (2000+2000)
+  const contentHeight = wrapper.scrollHeight - 4000;
+
+  // 2. حساب نسبة التكبير/التصغير المناسبة (مع ترك هامش 10%)
+  const scaleX = vWidth / contentWidth;
+  const scaleY = vHeight / contentHeight;
+  scale = Math.min(scaleX, scaleY) * 0.9; 
+
+  // 3. توسيط المحتوى
+  // بما أننا نستخدم transform-origin: center، الحساب يكون كالتالي:
+  translateX = 0;
+  translateY = 0;
+
+  updateTransform();
+}
+
+function drawConnections() {
+  svg.innerHTML = `
+    <defs>
+      <marker id="arrow-pre" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 Z" fill="#38bdf8" />
+      </marker>
+      <marker id="arrow-co" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 Z" fill="#fbbf24" />
+      </marker>
+    </defs>
+  `;
+  
+  const wrapRect = wrapper.getBoundingClientRect();
+  svg.setAttribute('width', wrapper.scrollWidth);
+  svg.setAttribute('height', wrapper.scrollHeight);
+
+  connections.forEach((c) => {
+    const f = document.getElementById(c.from);
+    const t = document.getElementById(c.to);
+    if(!f || !t) return;
+
+    const r1 = f.getBoundingClientRect();
+    const r2 = t.getBoundingClientRect();
+
+    const x1 = (r1.left + r1.width/2 - wrapRect.left) / scale;
+    const y1 = (r1.bottom - wrapRect.top) / scale;
+    const x2 = (r2.left + r2.width/2 - wrapRect.left) / scale;
+    const y2 = (r2.top - wrapRect.top) / scale;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    let d;
+
+    if (c.type === 'co') {
+      const cx1 = (r1.right - wrapRect.left) / scale;
+      const cy1 = (r1.top + r1.height/2 - wrapRect.top) / scale;
+      const cx2 = (r2.left - wrapRect.left) / scale;
+      const cy2 = (r2.top + r2.height/2 - wrapRect.top) / scale;
+      d = `M ${cx1} ${cy1} L ${cx1+20} ${cy1} L ${cx1+20} ${cy2} L ${cx2-5} ${cy2}`;
+      path.setAttribute('stroke', '#fbbf24');
+      path.setAttribute('marker-end', 'url(#arrow-co)');
+    } else {
+      const midY = y1 + (y2 - y1) / 2;
+      d = `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2 - 5}`;
+      path.setAttribute('stroke', '#38bdf8');
+      path.setAttribute('marker-end', 'url(#arrow-pre)');
+    }
+
+    path.setAttribute('d', d);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke-width', '2');
+    path.setAttribute('opacity', '0.2');
+    path.setAttribute('data-from', c.from);
+    path.setAttribute('data-to', c.to);
+    svg.appendChild(path);
+  });
+}
+
+// دالة حفظ الإنجاز في ذاكرة المتصفح
+function saveProgress() {
+  const completedIds = Array.from(document.querySelectorAll('.card.completed')).map(c => c.id);
+  localStorage.setItem('ee_completed_courses', JSON.stringify(completedIds));
+}
+
+// دالة تحميل الإنجاز المحفوظ
+function loadProgress() {
+  const saved = localStorage.getItem('ee_completed_courses');
+  if (saved) {
+    const ids = JSON.parse(saved);
+    ids.forEach(id => {
+      const card = document.getElementById(id);
+      if (card) card.classList.add('completed');
+    });
+  }
+}
+
+function initInteractions() {
+  const cards = document.querySelectorAll('.card');
+  const paths = document.querySelectorAll('path:not(defs path)');
+
+  cards.forEach(card => {
+    
+    // --- (1) نظام اللابتوب: النقر المزدوج بالماوس ---
+    card.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      card.classList.toggle('completed');
+      saveProgress();
+      console.log('تم التفعيل عبر اللابتوب (Double Click)');
+    });
+
+    // --- (2) نظام الجوال والايباد: النقر المزدوج باللمس ---
+    let lastTap = 0;
+    card.addEventListener('touchstart', (e) => {
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - lastTap;
+      
+      if (tapLength < 300 && tapLength > 0) {
+        // تم اكتشاف نقرتين باللمس
+        e.preventDefault(); // منع الزوم الافتراضي للجوال
+        card.classList.toggle('completed');
+        saveProgress();
+        if (navigator.vibrate) navigator.vibrate(50); 
+      }
+      lastTap = currentTime;
+    });
+
+    // --- (3) نظام العرض (النقرة الواحدة): لجميع الأجهزة ---
+    card.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cid = card.id;
+
+      if (card.classList.contains('selected')) {
+        clearSelection();
+        return;
+      }
+
+      clearSelection();
+      cards.forEach(c => c.classList.add('dimmed'));
+      paths.forEach(p => p.classList.add('faded'));
+      card.classList.remove('dimmed');
+      card.classList.add('selected');
+
+      paths.forEach(p => {
+        if (p.getAttribute('data-from') === cid || p.getAttribute('data-to') === cid) {
+          p.classList.remove('faded');
+          p.classList.add('active-path');
+          const fromNode = document.getElementById(p.getAttribute('data-from'));
+          const toNode = document.getElementById(p.getAttribute('data-to'));
+          if(fromNode) fromNode.classList.remove('dimmed');
+          if(toNode) toNode.classList.remove('dimmed');
+        }
+      });
+    });
+  });
+
+  document.addEventListener('click', () => clearSelection());
+}
+function clearSelection() {
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('dimmed', 'selected'));
+  document.querySelectorAll('path').forEach(p => p.classList.remove('faded', 'active-path'));
+}
+
+window.onload = () => {
+  resetView();
+  drawConnections();
+  initInteractions();
+  loadProgress(); // استعادة الإنجاز عند التشغيل
+};
+window.onresize = drawConnections;
+</script>
+</body>
+</html>

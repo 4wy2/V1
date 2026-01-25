@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>التخصصات والخطط الدراسية</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg0: #060714; --bg1: #0B1026; --stroke: rgba(255,255,255,.08);
+      --brand: #4F46E5; --brand2: #06B6D4; --text: rgba(255,255,255,.92);
+    }
+    body {
+      font-family: 'Cairo', sans-serif;
+      background:
+        radial-gradient(900px 380px at 20% 10%, rgba(79,70,229,.25), transparent 60%),
+        radial-gradient(800px 340px at 80% 25%, rgba(6,182,212,.18), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .glass { background: rgba(15,23,42,.72); backdrop-filter: blur(10px); border: 1px solid var(--stroke); }
+    .btn-brand {
+      background: linear-gradient(135deg, rgba(79,70,229,1) 0%, rgba(6,182,212,1) 100%);
+      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    }
+    .btn-brand:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(79,70,229,.22); filter: brightness(1.02); }
+    .btn-ghost { border: 1px solid var(--stroke); background: rgba(255,255,255,0.02); transition: background .18s ease, transform .18s ease; }
+    .btn-ghost:hover { background: rgba(255,255,255,0.06); transform: translateY(-1px); }
+    .major-card { transition: all 0.3s ease; }
+    .major-card:hover { border-color: rgba(255,255,255,0.2); transform: scale(1.01); }
+  </style>
+</head>
+
+<body class="overflow-x-hidden">
+  <main class="px-4 sm:px-6 pb-12">
+    <div class="max-w-5xl mx-auto">
+
+      <section class="mt-8 glass rounded-[2.25rem] p-8 text-center">
+        <div class="flex flex-col items-center">
+          <h2 class="text-2xl md:text-3xl font-black leading-tight">التخصصات والخطط الدراسية</h2>
+          <p class="mt-3 max-w-xl text-sm md:text-base text-white/70 leading-7">
+            هنا تجد المسارات المعتمدة تحت قسم الهندسة الكهربائية. اختر تخصصك للوصول إلى خطة التخصص ووصف المقررات.
+          </p>
+          <div class="mt-6">
+            <a href="index.html" class="btn-ghost inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold">
+              <i class="fa-solid fa-arrow-right"></i>
+              العودة للرئيسية
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <div class="mt-10 space-y-6">
+        
+        <div class="flex items-center gap-3 px-4">
+            <span class="h-px flex-1 bg-white/10"></span>
+            <span class="text-xs font-black tracking-widest text-white/40 uppercase">برامج البكالوريوس</span>
+            <span class="h-px flex-1 bg-white/10"></span>
+        </div>
+
+        <article class="glass rounded-[2.25rem] p-6 sm:p-8 major-card">
+          <div class="flex items-start justify-between gap-4 text-right">
+            <div>
+              <div class="text-xs text-indigo-400 font-black mb-1">بكالوريوس</div>
+              <h3 class="text-2xl font-black leading-tight">
+                الهندسة الكهربائية
+                <span class="block mt-1 text-sm text-white/50 font-bold">(Electrical Engineering)</span>
+              </h3>
+              <p class="mt-3 text-sm text-white/70 leading-7">التخصص الأساسي للبكالوريوس في القسم، يشمل المسارات التخصصية المتقدمة.</p>
+            </div>
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center glass flex-shrink-0">
+              <i class="fa-solid fa-bolt-lightning text-yellow-400 text-xl"></i>
+            </div>
+          </div>
+
+          <div class="mt-6 grid md:grid-cols-2 gap-4">
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/lqkpluzl/ee-bachelor-of-science-in-electrical-engineering-21-6-2023.pdf" target="_blank" class="btn-brand rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm"><i class="fa-solid fa-map-location-dot ms-2"></i> خطة التخصص</span>
+              <i class="fa-solid fa-chevron-left text-xs opacity-50"></i>
+            </a>
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/of5orhpc/%D9%88%D8%B5%D9%81-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D9%87%D9%86%D8%AF%D8%B3%D8%A9-%D9%83%D9%87%D8%B1%D8%A8%D8%A7%D8%A6%D9%8A%D8%A9.pdf" target="_blank" class="btn-ghost rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm"><i class="fa-solid fa-book-open ms-2 text-cyan-300"></i> وصف المقررات</span>
+              <i class="fa-solid fa-chevron-left text-xs opacity-50"></i>
+            </a>
+          </div>
+        </article>
+
+        <div class="flex items-center gap-3 px-4 pt-4">
+            <span class="h-px flex-1 bg-white/10"></span>
+            <span class="text-xs font-black tracking-widest text-white/40 uppercase">برامج الدبلوم</span>
+            <span class="h-px flex-1 bg-white/10"></span>
+        </div>
+
+        <article class="glass rounded-[2.25rem] p-6 sm:p-8 major-card">
+          <div class="flex items-start justify-between gap-4 text-right">
+            <div>
+              <div class="text-xs text-indigo-400 font-black mb-1">دبلوم</div>
+              <h3 class="text-2xl font-black leading-tight">تقنية القوى الكهربائية <span class="text-sm text-white/50">(Power)</span></h3>
+              <p class="mt-2 text-sm text-white/70">مسار يهتم بأنظمة القدرة، التوليد، النقل، والتوزيع.</p>
+            </div>
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center glass flex-shrink-0">
+              <i class="fa-solid fa-microchip text-cyan-300 text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-6 grid md:grid-cols-2 gap-4">
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/1odcalx4/ee-diploma-in-electrical-power-technology.pdf" target="_blank" class="btn-brand rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm">خطة التخصص</span>
+              <i class="fa-solid fa-file-pdf"></i>
+            </a>
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/kkggxweq/%D9%88%D8%B5%D9%81-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D8%AF%D8%A8%D9%84%D9%88%D9%85-%D9%82%D9%88%D9%89.pdf" target="_blank" class="btn-ghost rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm">وصف المقررات</span>
+              <i class="fa-solid fa-circle-info"></i>
+            </a>
+          </div>
+        </article>
+
+        <article class="glass rounded-[2.25rem] p-6 sm:p-8 major-card">
+          <div class="flex items-start justify-between gap-4 text-right">
+            <div>
+              <div class="text-xs text-indigo-400 font-black mb-1">دبلوم</div>
+              <h3 class="text-2xl font-black leading-tight">تقنية الإلكترونيات والاتصالات <span class="text-sm text-white/50">(Electronics)</span></h3>
+              <p class="mt-2 text-sm text-white/70">مسار يركز على الدوائر الإلكترونية، الإشارات، والشبكات.</p>
+            </div>
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center glass flex-shrink-0">
+              <i class="fa-solid fa-tower-broadcast text-cyan-300 text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-6 grid md:grid-cols-2 gap-4">
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/t15ccrke/diploma-in-electronics-and-communication-technology.pdf" target="_blank" class="btn-brand rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm">خطة التخصص</span>
+              <i class="fa-solid fa-file-pdf"></i>
+            </a>
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/ikennchp/%D9%88%D8%B5%D9%81-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D8%A7%D9%84%D8%A7%D9%84%D9%83%D8%AA%D8%B1%D9%88%D9%86%D9%8A%D8%A7%D8%AA.pdf" target="_blank" class="btn-ghost rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm">وصف المقررات</span>
+              <i class="fa-solid fa-circle-info"></i>
+            </a>
+          </div>
+        </article>
+
+        <article class="glass rounded-[2.25rem] p-6 sm:p-8 major-card">
+          <div class="flex items-start justify-between gap-4 text-right">
+            <div>
+              <div class="text-xs text-indigo-400 font-black mb-1">دبلوم</div>
+              <h3 class="text-2xl font-black leading-tight">تقنية الآلات الدقيقة والتحكم <span class="text-sm text-white/50">(I&C)</span></h3>
+              <p class="mt-2 text-sm text-white/70">يهتم بالحساسات، القياس الصناعي، وأنظمة التحكم المؤتمتة.</p>
+            </div>
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center glass flex-shrink-0">
+              <i class="fa-solid fa-gauge-high text-cyan-300 text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-6 grid md:grid-cols-2 gap-4">
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/s1rpzb23/diploma-in-instrumentation-and-control-technology.pdf" target="_blank" class="btn-brand rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm">خطة التخصص</span>
+              <i class="fa-solid fa-file-pdf"></i>
+            </a>
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/0namtnqq/%D9%88%D8%B5%D9%81-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D8%A7%D9%84%D8%A7%D8%AC%D9%87%D8%B2%D8%A9.pdf" target="_blank" class="btn-ghost rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm">وصف المقررات</span>
+              <i class="fa-solid fa-circle-info"></i>
+            </a>
+          </div>
+        </article>
+
+        <article class="glass rounded-[2.25rem] p-6 sm:p-8 major-card">
+          <div class="flex items-start justify-between gap-4 text-right">
+            <div>
+              <div class="text-xs text-indigo-400 font-black mb-1">دبلوم</div>
+              <h3 class="text-2xl font-black leading-tight">تقنية الميكاترونيكس <span class="text-sm text-white/50">(Mechatronics)</span></h3>
+              <p class="mt-2 text-sm text-white/70">تكامل بين الأنظمة الميكانيكية والتحكم الإلكتروني والبرمجة.</p>
+            </div>
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center glass flex-shrink-0">
+              <i class="fa-solid fa-robot text-cyan-300 text-xl"></i>
+            </div>
+          </div>
+          <div class="mt-6 grid md:grid-cols-2 gap-4">
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/xvjhgycj/ee-diploma-in-mechatronics-technology-program.pdf" target="_blank" class="btn-brand rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm">خطة التخصص</span>
+              <i class="fa-solid fa-file-pdf"></i>
+            </a>
+            <a href="https://rcjy.edu.sa/umb/rcjy-media/bsjnhglh/%D9%88%D8%B5%D9%81-%D9%85%D9%82%D8%B1%D8%B1%D8%A7%D8%AA-%D8%A7%D9%84%D9%85%D9%8A%D9%83%D8%A7%D8%AA%D8%B1%D9%88%D9%86%D9%8A%D9%83%D8%B3.pdf" target="_blank" class="btn-ghost rounded-2xl p-4 flex items-center justify-between">
+              <span class="font-bold text-sm">وصف المقررات</span>
+              <i class="fa-solid fa-circle-info"></i>
+            </a>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </main>
+</body>
+</html>

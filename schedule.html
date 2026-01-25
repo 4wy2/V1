@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>Engineering Vision | جدول ذكي</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    :root { --primary: #1e40af; --bg: #f8fafc; --ramadan-theme: #059669; }
+    body { font-family: 'Cairo', sans-serif; background: var(--bg); padding: 5px; color: #1e293b; overflow-x: hidden; }
+    
+    .control-panel { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 10px; border: 1px solid #e2e8f0; }
+    
+    /* تصميم صندوق رمضان المدمج */
+    .ramadan-box { border: 2px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+    .ramadan-note { background: #eff6ff; padding: 8px; border-bottom: 1px solid #e2e8f0; }
+
+    .input-group input { width: 100%; background: #f1f5f9; border: 2px solid #e2e8f0; border-radius: 8px; padding: 8px; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    
+    .day-btn { flex: 1; min-width: 45px; padding: 5px; background: white; border: 1.5px solid #e2e8f0; border-radius: 6px; text-align: center; cursor: pointer; font-size: 10px; font-weight: 700; }
+    .day-btn.active { background: #10b981; color: white; border-color: #10b981; }
+
+    .time-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; }
+    .time-btn { padding: 4px; font-size: 9px; background: white; border: 1px solid #cbd5e1; border-radius: 5px; text-align: center; cursor: pointer; font-weight: 700; }
+    .time-btn.selected { background: var(--primary); color: white; }
+
+    .schedule-card { background: white; border-radius: 10px; padding: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); width: 100%; margin: 0 auto; }
+    
+    .grid-table { display: grid; grid-template-columns: 0.8fr repeat(5, 1fr); gap: 1.5px; width: 100%; background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+    
+    .header-pill { background: #1e293b; color: white; padding: 6px 0; font-weight: 900; font-size: 9px; text-align: center; }
+    
+    .cell-base { background: white; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 2px; }
+    
+    .time-cell { background: #f8fafc; color: var(--primary); font-weight: 900; border-left: 1.5px solid #cbd5e1; }
+    .ramadan-mode-active .time-cell { color: var(--ramadan-theme); background: #f0fdf4; }
+
+    .time-cell div:first-child { font-size: 10px; line-height: 1; }
+    .time-cell div:last-child { font-size: 8px; opacity: 0.6; }
+    
+    .course-card { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+    .c-name { font-weight: 900; font-size: 9px; line-height: 1.1; margin-bottom: 1px; word-break: break-all; }
+    .c-room { font-size: 7px; font-weight: 700; color: rgba(0,0,0,0.5); border-top: 0.5px solid rgba(0,0,0,0.1); width: 90%; padding-top: 1px; }
+
+    .edit-actions { position: absolute; inset: 0; background: rgba(255,255,255,0.85); display: none; align-items: center; justify-content: space-around; z-index: 20; }
+    .delete-mode .edit-actions { display: flex !important; }
+    .action-btn { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: white; cursor: pointer; }
+    .btn-del { background: #ef4444; }
+    .btn-edit { background: #f59e0b; }
+
+    .btn-main { width: 100%; background: var(--primary); color: white; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 14px; margin-top: 8px; }
+    
+    .no-print { transition: all 0.3s; }
+  </style>
+</head>
+<body>
+  <header class="no-print py-4 px-2 text-center">
+    <div class="inline-flex items-center justify-center gap-2 mb-1">
+        <div class="w-8 h-8 bg-blue-900 rounded-xl flex items-center justify-center shadow-blue-200 shadow-lg">
+            <span class="text-white text-xs font-black italic"> EEC </span>
+        </div>
+        <h1 class="text-blue-900 font-black text-xl tracking-tight">Electrical Engineering Club</h1>
+    </div>
+    <p class="text-slate-500 text-[10px] font-bold tracking-[0.2em] uppercase">اللجنة العلمية</p>
+    
+    <div class="w-16 h-1 bg-blue-100 mx-auto mt-3 rounded-full"></div>
+</header>
+
+
+<div class="page-container">
+  <div class="control-panel no-print" id="ui-panel">
+    
+    
+
+    <div class="input-group">
+      <input id="courseName" type="text" placeholder="رمز المادة" />
+      <input id="roomName" type="text" placeholder="القاعة" />
+    </div>
+
+    <div class="flex gap-1 mb-2 overflow-x-auto">
+      <div class="day-btn" onclick="toggleDay(0, this)">الاحد</div>
+      <div class="day-btn" onclick="toggleDay(1, this)">الاثنين</div>
+      <div class="day-btn" onclick="toggleDay(2, this)">الثلاثاء</div>
+      <div class="day-btn" onclick="toggleDay(3, this)">الاربعاء</div>
+      <div class="day-btn" onclick="toggleDay(4, this)">الخميس</div>
+    </div>
+    <div id="ramadan-box" class="ramadan-box">
+        <div class="ramadan-note">
+            <p id="ramadan-note-text" class="text-[10px] text-blue-800 font-semibold italic text-center">
+                💡 ملاحظة: أدخل جدولك الأساسي، وسيتم تحديث الأوقات تلقائياً عند تفعيل زر شهر رمضان.
+            </p>
+        </div>
+        <button id="ramadan-toggle" disabled style="opacity: 0.6; cursor: not-allowed;" onclick="toggleRamadanMode()" class="w-full bg-slate-800 text-white py-2.5 text-[11px] font-black flex items-center justify-center gap-2 transition-all">
+            <span id="ramadan-text">توقيت شهر رمضان المبارك</span>
+            <span id="ramadan-badge" class="bg-amber-400 text-white px-2 py-0.5 rounded-full text-[8px] animate-pulse">SOON</span>
+        </button>
+    </div>
+    <div id="daysConfigs" class="space-y-2"></div>
+    <button onclick="saveEntry()" class="btn-main">إضافة المادة</button>
+    <button onclick="resetAll()" class="w-full mt-2 text-red-500 font-bold text-[10px]">تصفية الجدول</button>
+  </div>
+
+  <div id="display-area" class="schedule-card">
+    <div class="flex justify-between items-center mb-2 px-1">
+        <div>
+            <h1 class="text-blue-900 font-black text-sm">Engineering Vision</h1>
+            <p id="sub-label" class="text-gray-400 text-[8px]">الجدول الدراسي الأكاديمي (12H)</p>
+        </div>
+        <div class="text-[8px] font-bold text-slate-400">2026 Season</div>
+    </div>
+    
+    <div id="grid-container" class="grid-table"></div>
+    
+    <div class="flex gap-2">
+        <button id="edit-toggle-btn" onclick="toggleEditMode()" class="no-print mt-3 flex-1 py-2 border border-dashed border-slate-300 text-slate-500 rounded text-[10px] font-bold">
+            وضع التعديل
+        </button>
+    </div>
+    <p id="tip" class="hidden text-center text-[9px] text-gray-400 mt-2">اضغط على أي مكان لإعادة إظهار لوحة التحكم</p>
+  </div>
+
+</div>
+
+<script>
+  // أوقات الجدول العادي (12 ساعة)
+  const TIME_SLOTS = [
+    { id: "54", s: "07:15", e: "08:05" }, { id: "86", s: "08:15", e: "09:05" },
+    { id: "44", s: "09:15", e: "10:05" }, { id: "80", s: "10:15", e: "11:05" },
+    { id: "47", s: "12:15", e: "01:05" }, { id: "63", s: "01:15", e: "02:05" },
+    { id: "52", s: "02:15", e: "03:05" }, { id: "51", s: "03:15", e: "04:05" },
+    { id: "59", s: "04:15", e: "05:05" }, { id: "60", s: "05:15", e: "06:05" }
+  ];
+
+  // أوقات الجدول الرمضاني (12 ساعة)
+  const RAMADAN_SLOTS = [
+    { id: "54", s: "07:15", e: "07:55" }, { id: "86", s: "08:00", e: "08:40" },
+    { id: "44", s: "08:45", e: "09:25" }, { id: "80", s: "10:55", e: "11:35" },
+    { id: "47", s: "11:40", e: "12:20" }, { id: "63", s: "12:25", e: "01:05" },
+    { id: "52", s: "02:35", e: "03:15" }, { id: "51", s: "03:20", e: "04:00" },
+    { id: "59", s: "04:05", e: "04:45" }, { id: "60", s: "04:50", e: "05:30" }
+  ];
+
+  const DAYS_NAMES = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس"];
+  let scheduleData = JSON.parse(localStorage.getItem("ev_v10")) || [];
+  let currentSelectedDays = new Map();
+  let editMode = false;
+  let isRamadanMode = JSON.parse(localStorage.getItem("ramadan_active")) || false;
+
+  function toggleRamadanMode() {
+    isRamadanMode = !isRamadanMode;
+    localStorage.setItem("ramadan_active", isRamadanMode);
+    updateRamadanUI();
+    renderTable();
+  }
+
+  function updateRamadanUI() {
+    const btn = document.getElementById("ramadan-toggle");
+    const noteText = document.getElementById("ramadan-note-text");
+    const subLabel = document.getElementById("sub-label");
+    const area = document.getElementById("display-area");
+
+    if(isRamadanMode) {
+        btn.classList.replace("bg-slate-800", "bg-emerald-600");
+        document.getElementById("ramadan-text").innerText = "وضع رمضان نشط 🌙";
+        noteText.innerText = "✅ تم تفعيل توقيت رمضان بنجاح.";
+        noteText.classList.replace("text-blue-800", "text-emerald-700");
+        subLabel.innerText = "توقيت شهر رمضان المبارك (12H)";
+        area.classList.add("ramadan-mode-active");
+    } else {
+        if(!btn.disabled) {
+          btn.classList.replace("bg-emerald-600", "bg-slate-800");
+          document.getElementById("ramadan-text").innerText = "توقيت شهر رمضان المبارك";
+          noteText.innerText = "💡 ملاحظة: أدخل جدولك الأساسي، وسيتم تحديث الأوقات تلقائياً عند تفعيل زر رمضان.";
+          noteText.classList.replace("text-emerald-700", "text-blue-800");
+        }
+        subLabel.innerText = "الجدول الدراسي الأكاديمي (12H)";
+        area.classList.remove("ramadan-mode-active");
+    }
+  }
+
+  function generateCourseColor() {
+    const hue = Math.floor(Math.random() * 360);
+    return { bg: `hsl(${hue}, 80%, 96%)`, text: `hsl(${hue}, 90%, 20%)` };
+  }
+
+  function renderConfigs() {
+    const container = document.getElementById("daysConfigs");
+    container.innerHTML = "";
+    currentSelectedDays.forEach((slots, dayIdx) => {
+      container.innerHTML += `
+        <div class="bg-slate-50 p-2 rounded border border-slate-100">
+          <div class="text-[9px] font-bold text-blue-800 mb-1">${DAYS_NAMES[dayIdx]}</div>
+          <div class="time-grid">${TIME_SLOTS.map(t => `<div class="time-btn ${slots.has(t.id) ? 'selected' : ''}" onclick="toggleTime(${dayIdx}, '${t.id}', this)">${t.id}</div>`).join("")}</div>
+        </div>`;
+    });
+  }
+
+  function toggleDay(idx, el) {
+    currentSelectedDays.has(idx) ? currentSelectedDays.delete(idx) : currentSelectedDays.set(idx, new Set());
+    el.classList.toggle("active");
+    renderConfigs();
+  }
+
+  function toggleTime(dayIdx, slotId, el) {
+    const slots = currentSelectedDays.get(dayIdx);
+    slots.has(slotId) ? slots.delete(slotId) : slots.add(slotId);
+    el.classList.toggle("selected");
+  }
+
+  function toggleEditMode() {
+    editMode = !editMode;
+    document.getElementById("display-area").classList.toggle("delete-mode", editMode);
+    document.getElementById("edit-toggle-btn").innerText = editMode ? "إغلاق التعديل" : "وضع التعديل";
+  }
+
+  function renderTable() {
+    const container = document.getElementById("grid-container");
+    const ACTIVE_SLOTS = isRamadanMode ? RAMADAN_SLOTS : TIME_SLOTS;
+    
+    // ميزة تقصير وتطويل الجدول حسب المحاضرات (نفس منطق كودك الأصلي)
+    let lastSlotIndex = 4;
+    if (scheduleData.length > 0) {
+        scheduleData.forEach(entry => {
+            const idx = ACTIVE_SLOTS.findIndex(s => s.id === entry.slotId);
+            if (idx > lastSlotIndex) lastSlotIndex = idx;
+        });
+    }
+    const visibleSlots = ACTIVE_SLOTS.slice(0, lastSlotIndex + 1);
+
+    container.innerHTML = `<div class="header-pill">الوقت</div>` + DAYS_NAMES.map(d => `<div class="header-pill">${d}</div>`).join("");
+
+    visibleSlots.forEach(slot => {
+      container.innerHTML += `<div class="cell-base time-cell"><div>${slot.s}</div><div>${slot.e}</div></div>`;
+      for (let d = 0; d < 5; d++) {
+        const entry = scheduleData.find(x => x.day == d && x.slotId === slot.id);
+        if (!entry) {
+          container.innerHTML += `<div class="cell-base"></div>`;
+        } else {
+          container.innerHTML += `
+            <div class="cell-base" style="background:${entry.color.bg};">
+              <div class="edit-actions">
+                <div class="action-btn btn-edit" onclick="editCourse('${entry.name}', '${entry.room}')">✎</div>
+                <div class="action-btn btn-del" onclick="deleteEntireCourse('${entry.name}')">×</div>
+              </div>
+              <div class="course-card" style="color:${entry.color.text}">
+                <div class="c-name">${entry.name}</div>
+                ${entry.room ? `<div class="c-room">${entry.room}</div>` : ''}
+              </div>
+            </div>`;
+        }
+      }
+    });
+  }
+
+  function editCourse(name, room) {
+    document.getElementById("courseName").value = name;
+    document.getElementById("roomName").value = room;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function deleteEntireCourse(courseName) {
+    if(confirm(`حذف مادة "${courseName}"؟`)) {
+        scheduleData = scheduleData.filter(x => x.name !== courseName);
+        localStorage.setItem("ev_v10", JSON.stringify(scheduleData));
+        renderTable();
+    }
+  }
+
+  function saveEntry() {
+    const name = document.getElementById("courseName").value.trim();
+    const room = document.getElementById("roomName").value.trim();
+    if (!name || currentSelectedDays.size === 0) return alert("أكمل البيانات");
+
+    const color = generateCourseColor();
+    currentSelectedDays.forEach((slots, dayIdx) => {
+      slots.forEach(slotId => {
+        scheduleData = scheduleData.filter(x => !(x.day == dayIdx && x.slotId === slotId));
+        scheduleData.push({ day: dayIdx, slotId, name, room, color });
+      });
+    });
+
+    localStorage.setItem("ev_v10", JSON.stringify(scheduleData));
+    location.reload();
+  }
+
+  function resetAll() { if(confirm("مسح الكل؟")) { localStorage.clear(); location.reload(); } }
+  
+  updateRamadanUI();
+  renderTable();
+</script>
+  <footer class="no-print mt-10 mb-6 px-4">
+    <div class="border-t border-slate-200 pt-6">
+        <div class="flex flex-col items-center justify-center text-center">
+            <div class="flex items-center gap-2 mb-3">
+                <div class="w-6 h-6 bg-blue-900 rounded-lg flex items-center justify-center shadow-lg">
+                    <span class="text-white text-[10px] font-black italic">EV</span>
+                </div>
+                <span class="text-blue-900 font-black text-xs tracking-tight">Engineering Vision</span>
+            </div>
+
+            <p class="text-[9px] text-slate-400 font-bold mb-1">
+                <a href="about.html" class="text-blue-800 underline decoration-dotted">الرصاصي</a>
+            </p>
+            <p class="text-[8px] text-slate-300 uppercase tracking-widest">
+                &copy; 2026 Engineering Vision | All Rights Reserved
+            </p>
+        </div>
+    </div>
+</footer>
+</body>
+</html>

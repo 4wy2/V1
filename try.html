@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Architect | Ultimate Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --accent: #f97316; --bg: #0b0f1a; --card: #151c2e; --success: #22c55e; --danger: #ef4444; }
+        body { font-family: 'Cairo', sans-serif; background: var(--bg); color: #f8fafc; overflow-x: hidden; }
+        .glass-card { background: var(--card); border: 1px solid rgba(255,255,255,0.08); border-radius: 1.5rem; }
+        .interactive-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; position: relative; overflow: hidden; }
+        .interactive-card:hover { transform: translateY(-5px); border-color: var(--accent); box-shadow: 0 10px 30px -10px rgba(249, 115, 22, 0.3); }
+        .progress-bar { height: 6px; border-radius: 10px; background: #2d3748; overflow: hidden; }
+        .progress-fill { height: 100%; transition: width 1s ease-out; }
+        input, select { 
+            background: #1e293b; border: 1px solid #334155; border-radius: 0.85rem; 
+            padding: 0.75rem 1.2rem; color: white; outline: none; width: 100%; transition: 0.2s;
+        }
+        input:focus { border-color: var(--accent); ring: 2px rgba(249, 115, 22, 0.2); }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .status-badge { padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    </style>
+</head>
+<body class="antialiased pb-20">
+
+    <div class="max-w-6xl mx-auto px-4 pt-8">
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                    <i class="fa-solid fa-building-columns text-2xl text-slate-900"></i>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black tracking-tight italic uppercase">Academic <span class="text-orange-500">Architect</span></h1>
+                    <div class="flex gap-3 mt-1">
+                        <span class="text-slate-500 text-[10px] font-bold tracking-widest uppercase">Smart Grade Engine v4.0</span>
+                        <button onclick="Storage.exportData()" class="text-[10px] text-orange-500/70 hover:text-orange-500 font-bold uppercase underline">نسخة احتياطية</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-4">
+                <div class="bg-slate-800/40 p-4 rounded-2xl border border-slate-700/50 flex items-center gap-4 min-w-[160px]">
+                    <div class="text-right">
+                        <p class="text-[10px] text-slate-500 font-black uppercase leading-none mb-1">المعدل التراكمي</p>
+                        <p class="text-3xl font-black text-orange-500 italic leading-none" id="global-gpa">0.00</p>
+                    </div>
+                    <div class="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                        <i class="fa-solid fa-trophy text-orange-500"></i>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <aside class="lg:col-span-3 space-y-4">
+                <div class="flex justify-between items-center px-2">
+                    <h2 class="text-[11px] font-black text-slate-500 uppercase tracking-widest italic">الفصول الدراسية</h2>
+                    <button onclick="UI.openModal('sem')" class="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white transition-all">
+                        <i class="fa-solid fa-plus text-sm"></i>
+                    </button>
+                </div>
+                <div id="sem-list" class="space-y-2"></div>
+            </aside>
+
+            <main id="workspace" class="lg:col-span-9 fade-in"></main>
+        </div>
+    </div>
+
+    <div id="modal" class="fixed inset-0 hidden z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+        <div class="glass-card w-full max-w-md p-8 shadow-2xl scale-110">
+            <div class="flex justify-between items-center mb-6">
+                <h3 id="modal-title" class="text-xl font-black text-white italic">إضافة بيانات</h3>
+                <button onclick="UI.closeModal()" class="text-slate-500 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            <div id="modal-body" class="space-y-5"></div>
+            <div class="flex gap-3 mt-10">
+                <button id="modal-save" class="flex-[2] bg-orange-500 text-slate-900 font-black py-4 rounded-2xl hover:bg-orange-400 transition-all shadow-lg shadow-orange-500/20">حفظ البيانات</button>
+                <button onclick="UI.closeModal()" class="flex-1 bg-slate-800 py-4 rounded-2xl font-bold hover:bg-slate-700 transition-colors">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let Data = JSON.parse(localStorage.getItem('academic_v4')) || [];
+        let State = { semIdx: 0, courseIdx: null, view: 'courses' };
+
+        const Engine = {
+            getGradeColor(score) {
+                if (score >= 90) return '#22c55e';
+                if (score >= 75) return '#f97316';
+                if (score >= 60) return '#eab308';
+                return '#ef4444';
+            },
+
+            calculateSection(section) {
+                let score = 0;
+                let weight = parseFloat(section.weight) || 0;
+                if (section.type === 'single') {
+                    score = ((parseFloat(section.score) || 0) / (parseFloat(section.max) || 1)) * weight;
+                } else if (section.type === 'grouped') {
+                    if (!section.items?.length) return 0;
+                    let sumS = section.items.reduce((a, b) => a + (parseFloat(b.score) || 0), 0);
+                    let sumM = section.items.reduce((a, b) => a + (parseFloat(b.max) || 1), 0);
+                    score = (sumS / sumM) * weight;
+                } else if (section.type === 'extra') {
+                    score = parseFloat(section.score || 0);
+                }
+                return isNaN(score) ? 0 : score;
+            },
+
+            calculateCourse(course) {
+                let current = (course.sections || []).reduce((acc, s) => acc + this.calculateSection(s), 0);
+                let target = parseFloat(course.target) || 0;
+                return { total: current, need: Math.max(0, target - current), status: current >= target ? 'محقق' : 'قيد التقدم' };
+            },
+
+            save() { 
+                localStorage.setItem('academic_v4', JSON.stringify(Data)); 
+                UI.render(); 
+            }
+        };
+
+        const Storage = {
+            exportData() {
+                const blob = new Blob([JSON.stringify(Data)], {type: 'application/json'});
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `academic_backup_${new Date().toLocaleDateString()}.json`;
+                a.click();
+            }
+        };
+
+        const UI = {
+            render() {
+                this.renderSems();
+                this.renderMain();
+                this.updateGlobalGPA();
+            },
+
+            updateGlobalGPA() {
+                let totalPoints = 0, totalHours = 0;
+                Data.forEach(s => s.classes.forEach(c => {
+                    let h = parseFloat(c.credits) || 0;
+                    totalPoints += (Engine.calculateCourse(c).total * h);
+                    totalHours += h;
+                }));
+                let gpa = totalHours > 0 ? ((totalPoints / totalHours) / 20).toFixed(2) : "0.00";
+                const el = document.getElementById('global-gpa');
+                el.innerText = gpa;
+                el.style.color = gpa >= 4.5 ? '#22c55e' : (gpa >= 3.75 ? '#f97316' : '#ef4444');
+            },
+
+            renderSems() {
+                const list = document.getElementById('sem-list');
+                list.innerHTML = Data.map((s, i) => `
+                    <div class="group flex items-center justify-between p-4 rounded-2xl cursor-pointer transition-all ${State.semIdx === i ? 'bg-orange-500 text-slate-900 shadow-lg shadow-orange-500/20' : 'bg-slate-800/40 text-slate-400 hover:bg-slate-800'}" 
+                         onclick="State.semIdx=${i}; State.view='courses'; UI.render()">
+                        <div class="flex items-center gap-3">
+                            <i class="fa-solid fa-calendar-check opacity-50 text-xs"></i>
+                            <span class="truncate font-bold text-sm">${s.name}</span>
+                        </div>
+                        <button onclick="event.stopPropagation(); UI.deleteSem(${i})" class="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `).join('');
+            },
+
+            renderMain() {
+                const main = document.getElementById('workspace');
+                const sem = Data[State.semIdx];
+                if (!sem) {
+                    main.innerHTML = `<div class="glass-card p-20 text-center border-dashed border-2 border-slate-800">
+                        <div class="w-20 h-20 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <i class="fa-solid fa-plus text-3xl text-slate-600"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-slate-400 mb-2">ابدأ رحلتك الأكاديمية</h3>
+                        <p class="text-slate-600 max-w-xs mx-auto text-sm">قم بإضافة أول فصل دراسي من القائمة الجانبية للبدء في تتبع درجاتك.</p>
+                    </div>`;
+                    return;
+                }
+
+                if (State.view === 'courses') {
+                    main.innerHTML = `
+                        <div class="flex justify-between items-center mb-8">
+                            <div>
+                                <h2 class="text-2xl font-black italic text-white tracking-tight">${sem.name}</h2>
+                                <p class="text-xs text-slate-500 font-bold uppercase mt-1">عدد المواد المسجلة: ${sem.classes.length}</p>
+                            </div>
+                            <button onclick="UI.openModal('course')" class="bg-orange-500 text-slate-900 px-6 py-3 rounded-xl text-xs font-black shadow-lg shadow-orange-500/20 hover:scale-105 transition-all">+ إضافة مادة</button>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            ${sem.classes.map((c, i) => {
+                                const stats = Engine.calculateCourse(c);
+                                const color = Engine.getGradeColor(stats.total);
+                                return `
+                                <div onclick="State.view='detail'; State.courseIdx=${i}; UI.render()" class="glass-card p-6 interactive-card group">
+                                    <div class="flex justify-between items-start mb-4">
+                                        <div class="p-2 rounded-lg bg-slate-800 group-hover:bg-orange-500/10 transition-colors">
+                                            <i class="fa-solid fa-book text-orange-500"></i>
+                                        </div>
+                                        <span class="text-3xl font-black italic" style="color: ${color}">${stats.total.toFixed(1)}%</span>
+                                    </div>
+                                    <h3 class="font-black text-lg text-slate-100 mb-1">${c.name}</h3>
+                                    <div class="flex gap-2 mb-6">
+                                        <span class="status-badge bg-slate-800 text-slate-400 italic">${c.credits} ساعات</span>
+                                        <span class="status-badge" style="background: ${color}20; color: ${color}">الهدف: ${c.target}%</span>
+                                    </div>
+                                    <div class="progress-bar mb-4"><div class="progress-fill" style="width: ${stats.total}%; background: ${color}"></div></div>
+                                    <div class="flex justify-between items-center">
+                                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">تحليل المادة</p>
+                                        <button onclick="event.stopPropagation(); UI.deleteCourse(${i})" class="text-slate-700 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash-can text-sm"></i></button>
+                                    </div>
+                                </div>`;
+                            }).join('')}
+                        </div>`;
+                } else {
+                    const c = sem.classes[State.courseIdx];
+                    const stats = Engine.calculateCourse(c);
+                    const color = Engine.getGradeColor(stats.total);
+                    main.innerHTML = `
+                        <div class="space-y-8 fade-in">
+                            <div class="flex items-center gap-6">
+                                <button onclick="State.view='courses'; UI.render()" class="w-12 h-12 flex items-center justify-center rounded-2xl bg-slate-800 hover:bg-orange-500 hover:text-slate-900 text-orange-500 transition-all shadow-xl">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                                <div>
+                                    <h2 class="text-3xl font-black italic text-white">${c.name}</h2>
+                                    <div class="flex gap-4 mt-1">
+                                         <span class="text-xs text-orange-500 font-bold tracking-widest uppercase">Course Analytics</span>
+                                         <span class="text-xs text-slate-600 font-bold uppercase">الساعات: ${c.credits}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="glass-card p-8 md:col-span-2 flex flex-col justify-center relative overflow-hidden group">
+                                    <div class="absolute -right-4 -bottom-4 opacity-[0.03] text-[120px] font-black italic group-hover:text-orange-500 group-hover:opacity-[0.05] transition-all">GRADE</div>
+                                    <p class="text-[11px] text-slate-500 font-black uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                        <span class="w-2 h-2 rounded-full bg-orange-500"></span> الدرجة الكلية الآن
+                                    </p>
+                                    <h2 class="text-7xl font-black italic" style="color: ${color}">${stats.total.toFixed(1)}<span class="text-3xl ml-2 opacity-50">%</span></h2>
+                                </div>
+                                <div class="bg-orange-500 p-8 rounded-[2rem] text-slate-900 shadow-2xl shadow-orange-500/20 flex flex-col justify-between">
+                                    <div>
+                                        <p class="text-[10px] font-black uppercase opacity-60 tracking-widest">الهدف المطلوب</p>
+                                        <p class="text-5xl font-black italic">${c.target}%</p>
+                                    </div>
+                                    <div class="mt-8">
+                                        <p class="text-[10px] font-black uppercase opacity-60 tracking-widest">متبقي للوصول</p>
+                                        <p class="text-3xl font-black italic">${stats.need.toFixed(1)}%</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-end px-2">
+                                <h3 class="text-sm font-black uppercase text-slate-400 tracking-widest italic flex items-center gap-3">
+                                    توزيع التقييمات
+                                    <span class="w-12 h-[1px] bg-slate-800"></span>
+                                </h3>
+                                <button onclick="UI.openModal('section')" class="bg-white/5 hover:bg-orange-500 hover:text-slate-900 text-orange-500 px-4 py-2 rounded-lg text-[10px] font-black transition-all border border-orange-500/20 uppercase tracking-tighter">+ إضافة قسم جديد</button>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-6">
+                                ${c.sections.map((sec, sIdx) => {
+                                    const secScore = Engine.calculateSection(sec);
+                                    return `
+                                    <div class="glass-card overflow-hidden group border-r-2 border-transparent hover:border-orange-500 transition-all">
+                                        <div class="bg-white/[0.02] p-5 flex justify-between items-center border-b border-white/[0.05]">
+                                            <div class="flex items-center gap-4">
+                                                <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center font-black text-xs text-slate-400 group-hover:text-orange-500 transition-colors uppercase">
+                                                    ${sec.type[0]}
+                                                </div>
+                                                <div>
+                                                    <span class="font-black text-white italic group-hover:text-orange-500 transition-colors">${sec.name}</span>
+                                                    <p class="text-[10px] text-slate-600 font-bold uppercase">الوزن: ${sec.weight}% من المادة</p>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-6">
+                                                <div class="text-right">
+                                                    <span class="font-black italic text-xl text-white">${secScore.toFixed(1)}%</span>
+                                                    <p class="text-[9px] text-slate-600 font-black uppercase tracking-tighter">Contribution</p>
+                                                </div>
+                                                <button onclick="UI.deleteSection(${sIdx})" class="w-8 h-8 rounded-full bg-red-500/10 text-red-500/50 hover:text-red-500 hover:bg-red-500/20 transition-all flex items-center justify-center"><i class="fa-solid fa-trash-can text-xs"></i></button>
+                                            </div>
+                                        </div>
+                                        <div class="p-6">
+                                            ${sec.type === 'grouped' ? `
+                                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+                                                    ${sec.items.map((item, iIdx) => `
+                                                        <div class="flex justify-between items-center text-[11px] bg-slate-800/30 p-3 rounded-xl border border-white/[0.03] hover:border-orange-500/30 transition-all">
+                                                            <span class="text-slate-400 font-bold">${item.name}</span>
+                                                            <div class="flex items-center gap-3">
+                                                                <span class="font-black text-orange-500">${item.score}<span class="text-slate-600 ml-1">/ ${item.max}</span></span>
+                                                                <button onclick="UI.deleteSubItem(${sIdx}, ${iIdx})" class="text-slate-700 hover:text-red-400 transition-colors"><i class="fa-solid fa-circle-minus"></i></button>
+                                                            </div>
+                                                        </div>
+                                                    `).join('')}
+                                                </div>
+                                                <button onclick="UI.openModal('subitem', ${sIdx})" class="text-[10px] font-black text-orange-500/60 hover:text-orange-500 flex items-center gap-2 uppercase tracking-widest"><i class="fa-solid fa-plus-circle"></i> إضافة عنصر (كويز/واجب)</button>
+                                            ` : `
+                                                <div class="flex justify-between items-center bg-slate-800/20 p-4 rounded-2xl">
+                                                    <span class="text-xs text-slate-500 italic font-bold uppercase tracking-widest">الدرجة المحققة</span>
+                                                    <span class="font-black text-white bg-slate-800 px-4 py-2 rounded-xl border border-white/5">${sec.score} <span class="text-slate-600 mx-1">/</span> ${sec.max}</span>
+                                                </div>
+                                            `}
+                                        </div>
+                                    </div>
+                                `}).join('')}
+                            </div>
+                        </div>`;
+                }
+            },
+
+            openModal(type, extra = null) {
+                const m = document.getElementById('modal'), b = document.getElementById('modal-body'), s = document.getElementById('modal-save'), t = document.getElementById('modal-title');
+                m.classList.remove('hidden'); b.innerHTML = '';
+
+                if (type === 'sem') {
+                    t.innerText = "إضافة فصل دراسي";
+                    b.innerHTML = `<input id="inp-1" placeholder="مثلاً: خريف 2026" autofocus>`;
+                    s.onclick = () => { 
+                        let v = document.getElementById('inp-1').value; 
+                        if(v){ Data.push({name:v, classes:[]}); Engine.save(); UI.closeModal(); }
+                    };
+                } else if (type === 'course') {
+                    t.innerText = "إضافة مادة جديدة";
+                    b.innerHTML = `
+                        <input id="inp-1" placeholder="اسم المادة (مثلاً: Calculus 101)">
+                        <div class="grid grid-cols-2 gap-4">
+                            <input id="inp-2" type="number" placeholder="عدد الساعات">
+                            <input id="inp-3" type="number" placeholder="الهدف % (مثلاً 90)">
+                        </div>`;
+                    s.onclick = () => { 
+                        let n = document.getElementById('inp-1').value, h = document.getElementById('inp-2').value, target = document.getElementById('inp-3').value; 
+                        if(n){ Data[State.semIdx].classes.push({name:n, credits:h, target:target, sections:[]}); Engine.save(); UI.closeModal(); }
+                    };
+                } else if (type === 'section') {
+                    t.innerText = "تعريف قسم تقييم";
+                    b.innerHTML = `
+                        <input id="s-name" placeholder="اسم القسم (مثلاً: الاختبارات القصيرة)">
+                        <select id="s-type">
+                            <option value="single">إدخال مباشر (اختبار واحد)</option>
+                            <option value="grouped">إدخال مجمع (متعدد كالكويزات)</option>
+                            <option value="extra">درجات إضافية (Bonus)</option>
+                        </select>
+                        <input id="s-weight" type="number" placeholder="الوزن من 100% للمادة">
+                        <div id="single-only" class="grid grid-cols-2 gap-4">
+                            <input id="s-score" type="number" placeholder="درجتك">
+                            <input id="s-max" type="number" placeholder="من كم؟">
+                        </div>`;
+                    const typeSel = document.getElementById('s-type');
+                    typeSel.onchange = (e) => document.getElementById('single-only').style.display = e.target.value === 'grouped' ? 'none' : 'grid';
+                    s.onclick = () => {
+                        let name = document.getElementById('s-name').value, type = typeSel.value, weight = document.getElementById('s-weight').value;
+                        let score = document.getElementById('s-score').value || 0, max = document.getElementById('s-max').value || 100;
+                        Data[State.semIdx].classes[State.courseIdx].sections.push({name, type, weight, score, max, items: []});
+                        Engine.save(); UI.closeModal();
+                    };
+                } else if (type === 'subitem') {
+                    t.innerText = "إضافة تفصيل للقسم";
+                    b.innerHTML = `<input id="i-name" placeholder="مثلاً: الواجب الأول" autofocus><div class="grid grid-cols-2 gap-4"><input id="i-score" type="number" placeholder="درجتك"><input id="i-max" type="number" placeholder="من كم؟"></div>`;
+                    s.onclick = () => {
+                        let n = document.getElementById('i-name').value, sc = document.getElementById('i-score').value, mx = document.getElementById('i-max').value;
+                        if(n){ Data[State.semIdx].classes[State.courseIdx].sections[extra].items.push({name:n, score:sc, max:mx}); Engine.save(); UI.closeModal(); }
+                    };
+                }
+            },
+            closeModal() { document.getElementById('modal').classList.add('hidden'); },
+            deleteSem(i) { if(confirm('سيتم حذف الفصل الدراسي وجميع المواد التابعة له نهائياً، هل أنت متأكد؟')) { Data.splice(i, 1); State.semIdx = 0; Engine.save(); } },
+            deleteCourse(i) { if(confirm('حذف المادة؟')) { Data[State.semIdx].classes.splice(i, 1); Engine.save(); } },
+            deleteSection(i) { if(confirm('حذف القسم؟')) { Data[State.semIdx].classes[State.courseIdx].sections.splice(i, 1); Engine.save(); } },
+            deleteSubItem(sI, iI) { Data[State.semIdx].classes[State.courseIdx].sections[sI].items.splice(iI, 1); Engine.save(); }
+        };
+
+        UI.render();
+    </script>
+</body>
+</html>

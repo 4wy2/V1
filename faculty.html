@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>بحث أعضاء هيئة التدريس</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    :root {
+      --bg0: #060714; --bg1: #0B1026; --stroke: rgba(255,255,255,.08);
+      --brand: #4F46E5; --brand2: #06B6D4; --text: rgba(255,255,255,.92);
+    }
+    body {
+      font-family: 'Cairo', sans-serif;
+      background: radial-gradient(900px 380px at 20% 10%, rgba(79,70,229,.15), transparent 60%),
+                  radial-gradient(800px 340px at 80% 25%, rgba(6,182,212,.12), transparent 55%),
+                  var(--bg0);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .glass { background: rgba(15,23,42,.6); backdrop-filter: blur(12px); border: 1px solid var(--stroke); }
+    .btn-ghost { border: 1px solid var(--stroke); background: rgba(255,255,255,0.03); transition: all .2s; }
+    .btn-ghost:hover { background: rgba(255,255,255,0.08); transform: translateY(-2px); }
+    
+    /* Card Style */
+    .faculty-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--stroke);
+      transition: all 0.3s ease;
+    }
+    .faculty-card:hover {
+      border-color: var(--brand2);
+      background: rgba(255, 255, 255, 0.05);
+      transform: translateY(-3px);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(20px);
+      z-index: 9999; background: var(--brand); color: #fff; padding: 12px 24px;
+      border-radius: 50px; font-weight: 700; opacity: 0; pointer-events: none;
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    input::-webkit-search-cancel-button { display: none; }
+  </style>
+</head>
+
+<body class="px-4 py-6 md:px-8 md:py-10">
+  <div class="max-w-4xl mx-auto">
+    
+    <div class="flex flex-col md:flex-row items-center justify-between mb-10 gap-6">
+      <a href="index.html" class="w-full md:w-auto btn-ghost rounded-2xl px-6 py-3 font-bold text-sm flex items-center justify-center gap-2">
+        <i class="fa-solid fa-arrow-right"></i> رجوع للبوابة
+      </a>
+
+      <div class="flex items-center gap-4">
+        <div class="text-right">
+          <h1 class="text-xl md:text-2xl font-black">أعضاء هيئة التدريس</h1>
+          <p class="text-xs text-white/50 tracking-widest uppercase">Faculty Directory</p>
+        </div>
+        <div class="w-14 h-14 rounded-2xl flex items-center justify-center bg-indigo-500/20 border border-indigo-500/30">
+          <i class="fa-solid fa-user-tie text-indigo-400 text-2xl"></i>
+        </div>
+      </div>
+    </div>
+
+    <section class="glass rounded-[2.5rem] p-6 md:p-10 shadow-2xl">
+      <div class="mb-8 text-center md:text-right">
+        <h2 class="text-2xl font-black mb-2">ابحث عن دكتور</h2>
+        <p class="text-white/60 text-sm">اكتب الاسم، وسنقوم بالبحث لك في القائمة.</p>
+      </div>
+
+      <div class="space-y-4">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute right-4 top-1/2 -translate-y-1/2 text-white/30"></i>
+          <input id="q" type="search" autocomplete="off"
+            placeholder="اكتب اسم الدكتور هنا..."
+            class="w-full pr-12 pl-4 py-4 rounded-2xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 text-white placeholder:text-white/20 transition-all text-lg" />
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-4 pt-2">
+          <div class="flex gap-2">
+            <span class="bg-white/5 px-4 py-2 rounded-xl text-xs font-bold border border-white/5">
+              الإجمالي: <span id="total" class="text-indigo-400">0</span>
+            </span>
+            <span class="bg-indigo-500/10 px-4 py-2 rounded-xl text-xs font-bold border border-indigo-500/20">
+              النتائج: <span id="count" class="text-cyan-400">0</span>
+            </span>
+          </div>
+          <button id="clear" class="text-xs font-bold text-white/40 hover:text-white transition">
+            <i class="fa-solid fa-eraser ml-1"></i> مسح البحث
+          </button>
+        </div>
+      </div>
+
+      <div id="resultsList" class="mt-10 grid grid-cols-1 md:grid-cols-2 gap-4">
+        </div>
+
+      <div id="emptyState" class="hidden py-20 text-center">
+        <i class="fa-solid fa-face-frown text-4xl text-white/20 mb-4"></i>
+        <p class="text-white/40 font-bold">عذراً، لم نجد أحداً بهذا الاسم</p>
+      </div>
+
+      <p class="mt-10 text-center text-[10px] text-white/30 uppercase tracking-[0.2em]">
+        البيانات للتواصل الأكاديمي فقط • تم التطوير بواسطة الرصاصي
+      </p>
+    </section>
+  </div>
+
+  <div id="toast" class="toast">تم نسخ البريد بنجاح!</div>
+
+  <script>
+    const facultyData = [{"rank":"Eng.","name":"Sami Alalwani","jobTitle":"Lecturer","office":"ACX-F139","phone":"NA","email":"hsami@rcjy.edu.sa"},{"rank":"Eng.","name":"Motaz Mohamed Deebes","jobTitle":"Lecturer","office":"ACX-F136","phone":"41896","email":"mdeebes@rcjy.edu.sa;"},{"rank":"Dr.","name":"Ali Abdullah Sayghe","jobTitle":"Assistant Professor","office":"ACX-F66","phone":"41129","email":"sayghea@rcjy.edu.sa;"},{"rank":"Dr.","name":"Abdularahman Hawsawi","jobTitle":"Lecturer","office":"NA","phone":"NA","email":"husawia@rcyci.edu.sa"},{"rank":"Eng.","name":"Mir Masood Zuberi","jobTitle":"Trainer","office":"APX-F30","phone":"41357","email":"mzuberi@rcjy.edu.sa;"},{"rank":"Eng.","name":"Mohammad Istiaq Ahmad","jobTitle":"Lecturer","office":"ACX-F71","phone":"41428","email":"ahmad1@rcjy.edu.sa;"},{"rank":"Eng.","name":"Suresh Kalidas","jobTitle":"Lecturer","office":"ACXF135","phone":"41386","email":"khalidas@rcjy.edu.sa;"},{"rank":"Eng.","name":"Mustajab Ahmad khan","jobTitle":"Lecturer","office":"ACX-F137","phone":"41398","email":"mustajab@rcjy.edu.sa;"},{"rank":"Eng.","name":"Roberto Maximo Cenidoza","jobTitle":"Lecturer","office":"ACX-F62","phone":"41457","email":"cenidozar@rcjy.edu.sa;"},{"rank":"Eng.","name":"Fawwaz Ahmed Ayesh","jobTitle":"Lecturer","office":"APX-F23","phone":"41362","email":"fayesh@rcjy.edu.sa;"},{"rank":"Dr.","name":"Fahad Ahmed Banakhr","jobTitle":"Associate Professor","office":"ACX-F143","phone":"41075","email":"banakhrf@rcjy.edu.sa;"},{"rank":"Dr.","name":"Sameer Alsibiani","jobTitle":"Assistant Professor","office":"APX-F62","phone":"41000","email":"alsibianis1@rcjy.edu.sa;"},{"rank":"Dr.","name":"Adnan Badawood","jobTitle":"Assistant Professor","office":"ACX F31","phone":"41169","email":"Badawood1@rcjy.edu.sa;"},{"rank":"Eng.","name":"Nafea Alenezi","jobTitle":"Lecturer","office":"ACX-F130","phone":"41435","email":"alenezin@rcjy.edu.sa;"},{"rank":"Dr.","name":"Ali Saad Alghamdi","jobTitle":"Assistant Professor","office":"ACX-F04","phone":"41652","email":"alghamdiasg@rcjy.edu.sa;"},{"rank":"Eng.","name":"Shameer A. Koya","jobTitle":"Lecturer","office":"AD-230","phone":"41432","email":"skoya@rcjy.edu.sa;"},{"rank":"Eng.","name":"Girish Ganpatrao Shirsikar","jobTitle":"Lecturer","office":"APX-F19","phone":"41465","email":"gshirsikar@rcjy.edu.sa;"},{"rank":"Dr.","name":"Mohamed Ibrahim Mosaad","jobTitle":"Associate Professor","office":"ACX-F67","phone":"41596","email":"mosaadm@rcjy.edu.sa;"},{"rank":"Eng.","name":"Umasankar","jobTitle":"Lecturer","office":"APX-F25","phone":"41332","email":"aumasankar@rcjy.edu.sa;"},{"rank":"Dr.","name":"Liaqat Hayat","jobTitle":"Assistant Professor","office":"APX-F16","phone":"41200","email":"Liaqat@rcjy.edu.sa;"},{"rank":"Eng.","name":"Muhammed Kutty K.V.","jobTitle":"Trainer","office":"APX-F31","phone":"41368","email":"kuttym@rcjy.edu.sa;"},{"rank":"Dr.","name":"Nabil Saleh Rousan","jobTitle":"Assistant Professor","office":"ACX-F59","phone":"41248","email":"nrousan@rcjy.edu.sa;"},{"rank":"Eng.","name":"Moneer Almalki","jobTitle":"Lecturer","office":"APX-F56","phone":"NA","email":"malkimon@rcjy.gov.sa"},{"rank":"Eng.","name":"Nasir Ayub","jobTitle":"Trainer","office":"ACX-F138","phone":"41373","email":"nasirayub@rcjy.edu.sa;"},{"rank":"Eng.","name":"Shah Jehan","jobTitle":"Trainer","office":"APX-F65","phone":"41429","email":"shahj@rcjy.edu.sa;"},{"rank":"Eng.","name":"Arif Ali Rehman","jobTitle":"Trainer","office":"ACX-F145","phone":"41337","email":"arehman@rcjy.edu.sa;"},{"rank":"Eng.","name":"Ahmed Bahussain","jobTitle":"Trainer","office":"ACX-F65","phone":"41452","email":"abahussain@rcjy.edu.sa;"},{"rank":"Eng.","name":"Abdullah Fawaz Abdullah","jobTitle":"Trainer","office":"YTI-4F07","phone":"41041","email":"afawaz@rcjy.edu.sa;"},{"rank":"Dr.","name":"Yahya Alfadhli","jobTitle":"Assistant Professor","office":"ACX-F134","phone":"41279","email":"fadhli@rcjy.edu.sa;"},{"rank":"Dr.","name":"Mohammed Ahmed M. Azab","jobTitle":"Associate Professor","office":"ACX-F79","phone":"NA","email":"moustafa@rcjy.edu.sa;"},{"rank":"Dr.","name":"Suresh Kumar","jobTitle":"Assistant Professor","office":"APX-F21","phone":"41227","email":"suresh@rcjy.edu.sa;"},{"rank":"Eng.","name":"Ronilo S. Santos","jobTitle":"Trainer","office":"ACX-F69","phone":"41372","email":"rsantos@rcjy.edu.sa;"},{"rank":"Dr.","name":"Abdalla Younes","jobTitle":"Assistant Professor","office":"ACXF146","phone":"41118","email":"younesa@rcjy.edu.sa;"},{"rank":"Dr.","name":"Ahmed Abdul Aziz Alsubhi","jobTitle":"Associate Professor","office":"ACX-F60","phone":"41377","email":"subhi@rcjy.edu.sa;"},{"rank":"Dr.","name":"Adel Mohammed Alturki","jobTitle":"Assistant Professor","office":"ACX-F78","phone":"41507","email":"alturkia@rcjy.edu.sa;"},{"rank":"Dr.","name":"Annamalai Arunagiri","jobTitle":"Assistant Professor","office":"ACXF76","phone":"41365","email":"arunagiria@rcjy.edu.sa;"},{"rank":"Dr.","name":"Bakur AlQaudi","jobTitle":"Assistant Professor","office":"ACX-F140","phone":"41367","email":"Alqaudib@rcjy.edu.sa;"},{"rank":"Dr.","name":"Mohammed Mostafa","jobTitle":"Assistant Professor","office":"ACX-F129","phone":"41225","email":"merg@rcjy.edu.sa;"},{"rank":"Eng.","name":"John A. Acielo","jobTitle":"Trainer","office":"APX-F61","phone":"41361","email":"jacielo@rcjy.edu.sa;"},{"rank":"Eng.","name":"Ali Al-Nahas","jobTitle":"Lecturer","office":"APX-F24","phone":"41129","email":"aleisa@RCJY.EDU.SA;"},{"rank":"Dr.","name":"Mohammed Mousa","jobTitle":"Assistant Professor","office":"ACX-F63","phone":"41379","email":"mousam1@rcjy.edu.sa;"},{"rank":"Dr.","name":"Salem Mohammed Batiyah","jobTitle":"Assistant Professor","office":"ACX-F70","phone":"41356","email":"batiyahs@rcjy.edu.sa;"},{"rank":"Dr.","name":"Musfer AlRadady","jobTitle":"Assistant Professor","office":"ACX-F 72","phone":"41251","email":"AlRadadym@rcjy.edu.sa;"},{"rank":"Eng.","name":"Zainudin Kornain","jobTitle":"Lecturer","office":"ACX-F77","phone":"41436","email":"kornainz@rcjy.edu.sa;"},{"rank":"Dr.","name":"Ayman Khalid Alhejji","jobTitle":"Associate Professor","office":"APX-F54","phone":"41121","email":"alhejjia@rcjy.edu.sa;"},{"rank":"Eng.","name":"Mohammed Sayed","jobTitle":"Lecturer","office":"APX-F66","phone":"NA","email":"sayedm1@rcjy.edu.sa;"},{"rank":"Dr.","name":"Mohamed Mahfouz","jobTitle":"Assistant Professor","office":"ACXF80","phone":"41427","email":"mahfouzm@rcjy.edu.sa;"},{"rank":"Dr.","name":"Mansour Abdullah Aljohani","jobTitle":"Assistant Professor","office":"ACX-F64","phone":"41030","email":"majohani@rcjy.edu.sa;"},{"rank":"Dr.","name":"Mohammed Hussain Mayyan","jobTitle":"Assistant Professor","office":"APX-F20","phone":"41235","email":"mayyan@rcjy.edu.sa;"},{"rank":"Dr.","name":"Yousuf Dawood Almoallem","jobTitle":"Assistant Professor","office":"ACX-F65","phone":"41632","email":"moallemy@rcjy.edu.sa;"},{"rank":"Eng.","name":"Othman M. Said Ahtiwash","jobTitle":"Lecturer","office":"ACX-F147","phone":"41374","email":"oahtiwash@rcjy.edu.sa;"},{"rank":"Dr.","name":"Latif Ismael Shaikh","jobTitle":"Assistant Professor","office":"ACX-F68","phone":"41391","email":"lshaikh@rcjy.edu.sa;"},{"rank":"Eng.","name":"Naushaad V. Moosa","jobTitle":"Lecturer","office":"APX-F32","phone":"41369","email":"moosan@rcjy.edu.sa;"},{"rank":"Eng.","name":"Imran Fazal","jobTitle":"Lecturer","office":"APX F67","phone":"41364","email":"Ifazal@rcjy.edu.sa;"},{"rank":"Dr.","name":"Azzeddine Djaiz","jobTitle":"Assistant Professor","office":"ACX-F82","phone":"41385","email":"adjaiz@rcjy.edu.sa;"},{"rank":"Eng.","name":"Loai Abdullah Al-Aswad","jobTitle":"Trainer","office":"APX-F68","phone":"41474","email":"lalaswad@rcjy.edu.sa;"},{"rank":"Eng.","name":"Almahdi Ali Ababneh","jobTitle":"Lecturer","office":"ACX-F61","phone":"41371","email":"aababneh@rcjy.edu.sa;"},{"rank":"Eng.","name":"Omar Alandejani","jobTitle":"Lecturer","office":"ACX-F144","phone":"41381","email":"oalandejani@rcjy.edu.sa;"},{"rank":"Eng.","name":"Bakheet Al-Ghamdi","jobTitle":"Trainer","office":"APX-F28","phone":"41080","email":"bakheetg@rcjy.edu.sa;"},{"rank":"Eng.","name":"Muath Aloufi","jobTitle":"Trainer","office":"ACX-F81","phone":"NA","email":"aloufim@rcjy.edu.sa;"},{"rank":"Eng.","name":"Turki Alsayed","jobTitle":"Lecturer","office":"ACX-F74","phone":"41363","email":"alsayedt@rcjy.edu.sa;"},{"rank":"Eng.","name":"Shakir Alghamdi","jobTitle":"Lecturer","office":"APX-F18","phone":"41383","email":"shakir@rcjy.edu.sa;"},{"rank":"Eng.","name":"Ashfaq Hussain Chaudhry","jobTitle":"Lecturer","office":"YUC/E1-120","phone":"41447","email":"ashfaq@rcjy.edu.sa;"},{"rank":"Eng.","name":"Ahmed Bakht Sultan","jobTitle":"Trainer","office":"ACX-F59","phone":"41192","email":"sultanba@rcjy.edu.sa;"},{"rank":"Eng.","name":"Ahmed Abdallah Saleh Almalki","jobTitle":"Trainer","office":"APX-F22","phone":"41295","email":"malkiaas@rcjy.edu.sa;"},{"rank":"Eng.","name":"Ahmed Abdulkarim Almuagili albalawi","jobTitle":"Trainer","office":"APX-F29","phone":"NA","email":"almuagiliaa@rcjy.edu.sa;"},{"rank":"Eng.","name":"Ibrahim Salem Al Jehef","jobTitle":"Trainer","office":"APX-F33","phone":"NA","email":"juhaifis@rcjy.edu.sa;"},{"rank":"Eng.","name":"Ahmed Mana Alhashel","jobTitle":"Trainer","office":"APX-F53","phone":"4NA","email":"hashela@rcjy.edu.sa;"},{"rank":"Eng.","name":"Omar Alsalamah","jobTitle":"Trainer","office":"APX-F55","phone":"4NA","email":"Salamhom@rcjy.edu.sa;"}];
+
+    const qEl = document.getElementById("q");
+    const resultsList = document.getElementById("resultsList");
+    const emptyState = document.getElementById("emptyState");
+    const totalEl = document.getElementById("total");
+    const countEl = document.getElementById("count");
+    const clearBtn = document.getElementById("clear");
+    const toastEl = document.getElementById("toast");
+
+    totalEl.textContent = facultyData.length;
+
+    function cleanEmail(e) { return (e ?? "").toString().trim().replace(/;+/g, "").toLowerCase(); }
+
+    async function copyText(text) {
+      try { await navigator.clipboard.writeText(text); return true; } 
+      catch { return false; }
+    }
+
+    function showToast() {
+      toastEl.classList.add("show");
+      setTimeout(() => toastEl.classList.remove("show"), 2000);
+    }
+
+    function render(list) {
+      countEl.textContent = list.length;
+      resultsList.innerHTML = "";
+      
+      if (list.length === 0) {
+        emptyState.classList.remove("hidden");
+        return;
+      }
+      emptyState.classList.add("hidden");
+
+      list.forEach(p => {
+        const email = cleanEmail(p.email);
+        const card = document.createElement("div");
+        card.className = "faculty-card rounded-2xl p-5 flex flex-col justify-between";
+        card.innerHTML = `
+          <div>
+            <div class="flex justify-between items-start mb-4">
+              <span class="text-[10px] font-black px-2 py-1 bg-white/10 rounded-lg text-white/50 uppercase">${p.rank || 'NA'}</span>
+              <i class="fa-solid fa-id-card text-white/10 text-xl"></i>
+            </div>
+            <h3 class="font-black text-lg text-white/90 mb-1">${p.name}</h3>
+            <p class="text-xs text-white/40 mb-4">${p.jobTitle || 'Faculty Member'}</p>
+          </div>
+          
+          <div class="space-y-3 border-t border-white/5 pt-4">
+            <div class="flex items-center gap-3 text-sm">
+              <i class="fa-solid fa-location-dot text-indigo-400 w-4"></i>
+              <span class="text-white/70">المكتب: ${p.office || 'NA'}</span>
+            </div>
+            <button onclick="handleCopy('${email}')" class="w-full flex items-center gap-3 text-sm hover:text-cyan-400 transition-colors group">
+              <i class="fa-solid fa-envelope text-cyan-400 w-4"></i>
+              <span class="text-white/70 group-hover:text-cyan-400 truncate">${email}</span>
+            </button>
+          </div>
+        `;
+        resultsList.appendChild(card);
+      });
+    }
+
+    window.handleCopy = async (email) => {
+      if (email && email !== 'na') {
+        const ok = await copyText(email);
+        if (ok) showToast();
+      }
+    };
+
+    qEl.addEventListener("input", (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      const filtered = facultyData.filter(p => p.name.toLowerCase().includes(q));
+      render(filtered);
+    });
+
+    clearBtn.addEventListener("click", () => {
+      qEl.value = "";
+      render(facultyData);
+      qEl.focus();
+    });
+
+    // Initial Render
+    render(facultyData);
+  </script>
+</body>
+</html>

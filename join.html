@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>طلب انضمام - اللجنة العلمية</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { 
+      font-family: 'Cairo', sans-serif; 
+      background: #060714; 
+      color: white; 
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+    .glass-card { 
+      background: rgba(15, 23, 42, 0.6); 
+      backdrop-filter: blur(12px); 
+      border: 1px solid rgba(255,255,255,0.05); 
+    }
+    .input-field { 
+      background: rgba(255,255,255,0.02); 
+      border: 1px solid rgba(255,255,255,0.1); 
+      transition: all 0.3s ease; 
+    }
+    .input-field:focus { 
+      border-color: #6366f1; 
+      background: rgba(99, 102, 241, 0.05); 
+      outline: none; 
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
+    }
+    
+    .checkbox-content { 
+      border: 2px solid rgba(255,255,255,0.05); 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+      cursor: pointer; 
+      height: 100%; 
+      position: relative; 
+    }
+    input:checked + .checkbox-content { 
+      border-color: #6366f1; 
+      background: rgba(99, 102, 241, 0.1); 
+      transform: translateY(-5px); 
+    }
+    input:checked + .checkbox-content .check-icon { opacity: 1; transform: scale(1); }
+    .check-icon { 
+      opacity: 0; 
+      position: absolute; 
+      top: 15px; 
+      left: 15px; 
+      color: #6366f1; 
+      transition: 0.3s; 
+      transform: scale(0.5);
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade { animation: fadeInUp 0.8s ease-out forwards; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body class="p-4 sm:p-6 md:p-12 min-h-screen flex justify-center items-start">
+
+  <div id="mainContainer" class="max-w-4xl w-full space-y-8 animate-fade">
+    
+    <div class="text-center space-y-4">
+      <a href="index.html" class="inline-block px-5 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] md:text-xs text-white/50 hover:text-white transition-all hover:bg-white/10">
+        <i class="fa-solid fa-arrow-right ml-2"></i>العودة للرئيسية
+      </a>
+      <h1 class="text-3xl md:text-5xl font-black bg-gradient-to-r from-white via-white to-white/30 bg-clip-text text-transparent italic tracking-tight">بوابة المبدعين</h1>
+      <p class="text-[10px] md:text-xs text-indigo-400 font-bold uppercase tracking-[0.4em]">Join The Scientific Committee</p>
+    </div>
+
+    <div id="formWrapper">
+      <form id="joinForm" name="detailed-join" method="POST" data-netlify="true" class="space-y-6 md:space-y-8">
+        <input type="hidden" name="form-name" value="detailed-join" />
+
+        <div class="glass-card rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 space-y-8">
+          <div class="flex items-center gap-4">
+            <span class="w-1.5 h-8 bg-indigo-500 rounded-full"></span>
+            <h2 class="text-lg md:text-xl font-bold">أولاً: البيانات الأساسية</h2>
+          </div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-8">
+            <div class="space-y-2">
+              <label class="text-[10px] font-bold text-white/30 uppercase tracking-widest mr-2">الاسم الثلاثي</label>
+              <input type="text" name="full_name" required class="input-field w-full rounded-2xl px-6 py-4 text-sm md:text-base" placeholder="أدخل اسمك الكريم">
+            </div>
+            <div class="space-y-2">
+              <label class="text-[10px] font-bold text-white/30 uppercase tracking-widest mr-2">رقم التواصل (واتساب)</label>
+              <input type="tel" name="whatsapp" required class="input-field w-full rounded-2xl px-6 py-4 text-sm md:text-base text-left" dir="ltr" placeholder="05xxxxxxxx">
+            </div>
+          </div>
+          <div class="space-y-2">
+            <label class="text-[10px] font-bold text-white/30 uppercase tracking-widest mr-2">التخصص الدراسي</label>
+            <input type="text" name="major" required class="input-field w-full rounded-2xl px-6 py-4 text-sm md:text-base" placeholder="مثال: هندسة قوى كهربائية، الكترونيات..">
+          </div>
+        </div>
+
+        <div class="glass-card rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 space-y-8">
+          <div class="flex justify-between items-center">
+            <div class="flex items-center gap-4">
+              <span class="w-1.5 h-8 bg-cyan-500 rounded-full"></span>
+              <h2 class="text-lg md:text-xl font-bold">ثانياً: مجالات الإبداع</h2>
+            </div>
+            <span class="text-[9px] md:text-[10px] text-white/20 bg-white/5 px-3 py-1 rounded-full italic">متعدد الاختيارات</span>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 md:gap-6">
+            <label class="relative group">
+              <input type="checkbox" name="skill[]" value="Academic" class="peer hidden">
+              <div class="checkbox-content p-6 md:p-8 rounded-[2rem] bg-white/[0.01]">
+                <i class="fa-solid fa-circle-check check-icon text-lg"></i>
+                <i class="fa-solid fa-book-open-reader text-indigo-400 text-3xl mb-4 block group-hover:scale-110 transition-transform"></i>
+                <span class="block font-black text-base md:text-lg mb-2">المحتوى الأكاديمي</span>
+                <p class="text-[10px] md:text-xs text-white/40 leading-relaxed">كتابة النوتات، تلخيص المواد المعقدة، وشرح المفاهيم لزملائك الطلاب.</p>
+              </div>
+            </label>
+
+            <label class="relative group">
+              <input type="checkbox" name="skill[]" value="Design" class="peer hidden">
+              <div class="checkbox-content p-6 md:p-8 rounded-[2rem] bg-white/[0.01]">
+                <i class="fa-solid fa-circle-check check-icon text-lg"></i>
+                <i class="fa-solid fa-wand-magic-sparkles text-pink-400 text-3xl mb-4 block group-hover:scale-110 transition-transform"></i>
+                <span class="block font-black text-base md:text-lg mb-2">الإبداع البصري</span>
+                <p class="text-[10px] md:text-xs text-white/40 leading-relaxed">تصميم الهوية البصرية، البوسترات، ومونتاج الفيديوهات التعليمية.</p>
+              </div>
+            </label>
+
+            <label class="relative group">
+              <input type="checkbox" name="skill[]" value="Tech" class="peer hidden">
+              <div class="checkbox-content p-6 md:p-8 rounded-[2rem] bg-white/[0.01]">
+                <i class="fa-solid fa-circle-check check-icon text-lg"></i>
+                <i class="fa-solid fa-laptop-code text-cyan-400 text-3xl mb-4 block group-hover:scale-110 transition-transform"></i>
+                <span class="block font-black text-base md:text-lg mb-2">التطوير والتقنية</span>
+                <p class="text-[10px] md:text-xs text-white/40 leading-relaxed">تطوير المواقع، إدارة البيانات، أو التعامل مع برامج المحاكاة الهندسية.</p>
+              </div>
+            </label>
+
+            <label class="relative group">
+              <input type="checkbox" name="skill[]" value="Admin" class="peer hidden">
+              <div class="checkbox-content p-6 md:p-8 rounded-[2rem] bg-white/[0.01]">
+                <i class="fa-solid fa-circle-check check-icon text-lg"></i>
+                <i class="fa-solid fa-comments-glow text-emerald-400 text-3xl mb-4 block group-hover:scale-110 transition-transform"></i>
+                <span class="block font-black text-base md:text-lg mb-2">العلاقات والتنظيم</span>
+                <p class="text-[10px] md:text-xs text-white/40 leading-relaxed">إدارة منصات التواصل، كتابة المحتوى الإبداعي، وتنظيم الفعاليات.</p>
+              </div>
+            </label>
+
+            <label class="relative sm:col-span-2 group">
+              <input type="checkbox" name="skill[]" value="Other" class="peer hidden">
+              <div class="checkbox-content p-6 md:p-8 rounded-[2rem] bg-white/[0.01] border-dashed border-white/10">
+                <i class="fa-solid fa-circle-check check-icon text-lg"></i>
+                <div class="flex flex-col md:flex-row md:items-center gap-4">
+                  <i class="fa-solid fa-plus text-white/20 text-3xl"></i>
+                  <div>
+                    <span class="block font-black text-base md:text-lg mb-1">مجالات أخرى</span>
+                    <p class="text-[10px] md:text-xs text-white/40">لديك موهبة مختلفة؟ اختر هذا الخيار واشرحها لنا في الرسالة بالأسفل.</p>
+                  </div>
+                </div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="glass-card rounded-[2rem] md:rounded-[3rem] p-6 md:p-12 space-y-8">
+          <div class="flex items-center gap-4">
+            <span class="w-1.5 h-8 bg-yellow-500 rounded-full"></span>
+            <h2 class="text-lg md:text-xl font-bold">ثالثاً: رسالتك لنا</h2>
+          </div>
+          <div class="space-y-4">
+            <label class="text-[10px] font-bold text-white/30 uppercase tracking-widest mr-2 leading-relaxed block">لماذا تريد الانضمام؟ وما هي الإضافة التي ستقدمها؟</label>
+            <textarea name="message" rows="5" required class="input-field w-full rounded-[2rem] px-6 py-5 text-sm md:text-base resize-none" placeholder="تكلم عن شغفك، مهاراتك الخاصة، أو أي تفاصيل تحب مشاركتها.."></textarea>
+          </div>
+
+          <button type="submit" class="w-full py-5 md:py-6 rounded-[2rem] bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 font-black text-lg md:text-xl shadow-2xl shadow-indigo-500/20 transition-all active:scale-95 hover:shadow-indigo-500/40">
+            إرسال طلب الانضمام
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div id="successMessage" class="hidden glass-card rounded-[3rem] p-10 md:p-20 text-center space-y-8">
+      <div class="w-20 h-20 md:w-28 md:h-28 bg-indigo-500/10 text-indigo-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
+        <i class="fa-solid fa-paper-plane text-3xl md:text-5xl animate-bounce"></i>
+      </div>
+      <div class="space-y-3">
+        <h2 class="text-3xl md:text-5xl font-black italic">وصلت الرسالة!</h2>
+        <p class="text-white/40 text-xs md:text-sm max-w-sm mx-auto leading-relaxed">شكراً لاهتمامك باللجنة العلمية. سنقوم بمراجعة طلبك والتواصل معك عبر الواتساب في أقرب وقت.</p>
+      </div>
+      <a href="index.html" class="inline-block px-12 py-4 rounded-2xl bg-white/5 border border-white/10 text-sm font-bold hover:bg-white/10 transition-all hover:scale-105">العودة للرئيسية</a>
+    </div>
+
+    <div class="text-center space-y-2 pb-10">
+      <p class="text-[9px] md:text-[10px] text-white/10 uppercase tracking-[0.5em] font-medium">Scientific Committee &copy; 2026</p>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("joinForm");
+    const formWrapper = document.getElementById("formWrapper");
+    const successMessage = document.getElementById("successMessage");
+
+    form.onsubmit = function(e) {
+      e.preventDefault();
+      const formData = new FormData(form);
+      
+      fetch("/", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams(formData).toString(),
+      })
+      .then(() => {
+        formWrapper.style.display = 'none';
+        successMessage.classList.remove("hidden");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+      .catch((error) => {
+        alert("حدث خطأ، تأكد من اتصالك بالإنترنت.");
+      });
+    };
+  </script>
+
+</body>
+</html>

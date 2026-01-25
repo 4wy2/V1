@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>EE Degree Plan - Progress Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=JetBrains+Mono:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #050810;
+      --card-bg: rgba(15, 23, 42, 0.8);
+      --card-border: rgba(255, 255, 255, 0.1);
+      --text-main: #f1f5f9;
+      --accent-blue: #38bdf8;
+      --accent-yellow: #fbbf24;
+      --accent-green: #22c55e;
+      --card-width: 135px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg-dark); color: var(--text-main);
+      font-family: 'Cairo', sans-serif; overflow: hidden; height: 100vh; width: 100vw; touch-action: none;
+    }
+
+    header {
+      padding: 15px; text-align: center; position: fixed; top: 0; left: 0; right: 0;
+      background: rgba(5, 8, 16, 0.95); backdrop-filter: blur(10px); z-index: 1000; border-bottom: 1px solid var(--card-border);
+    }
+
+    .progress-container { max-width: 500px; margin: 8px auto; text-align: center; }
+    .progress-bar-bg { background: rgba(255,255,255,0.05); height: 10px; border-radius: 5px; overflow: hidden; border: 1px solid var(--card-border); }
+    #progress-bar-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #16a34a, var(--accent-green)); transition: width 0.6s ease; }
+    #progress-text { font-size: 0.85rem; color: var(--accent-green); font-weight: 700; margin-top: 4px; }
+
+    .legend { display: inline-flex; gap: 15px; font-size: 0.7rem; margin-top: 5px; opacity: 0.8; }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .dot { width: 8px; height: 8px; border-radius: 2px; }
+
+    .viewport { width: 100vw; height: 100vh; cursor: grab; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+    .flowchart-wrapper { position: absolute; transform-origin: center center; padding: 2000px; display: flex; flex-direction: column; }
+
+    .year-section { display: flex; margin-bottom: 80px; }
+    .year-sidebar { width: 60px; display: flex; align-items: center; justify-content: center; border-right: 2px solid var(--accent-blue); flex-shrink: 0; }
+    .year-label { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 900; color: var(--accent-blue); letter-spacing: 2px; }
+
+    .semesters-container { flex-grow: 1; display: flex; flex-direction: column; gap: 70px; }
+    .semester-row { display: flex; align-items: center; padding-left: 30px; }
+    .sem-indicator { width: 80px; font-size: 0.7rem; font-weight: 700; color: var(--accent-blue); opacity: 0.6; }
+    .course-list { display: flex; gap: 40px; }
+
+    .card {
+      width: var(--card-width); height: 85px; background: var(--card-bg); border: 1px solid var(--card-border);
+      border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; position: relative; z-index: 10; transition: all 0.3s; cursor: pointer;
+    }
+    .card.selected { border-color: var(--accent-yellow) !important; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4); background: #1e293b; z-index: 100; }
+    .card.completed { border-color: var(--accent-green) !important; background: rgba(34, 197, 94, 0.1) !important; }
+    .card.completed::after { content: '✓'; position: absolute; top: 4px; right: 6px; color: var(--accent-green); font-size: 12px; font-weight: 900; }
+    .card.dimmed { opacity: 0.15; filter: grayscale(0.8); }
+    
+    .code { font-family: 'JetBrains Mono'; font-size: 0.8rem; color: var(--accent-blue); font-weight: 800; }
+    .name { font-size: 0.55rem; color: #cbd5e1; margin-top: 4px; padding: 0 5px; font-weight: 600; }
+    .ch-badge { font-size: 0.5rem; background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 3px; margin-top: 4px; color: var(--accent-yellow); }
+
+    #svg-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
+    path { transition: opacity 0.4s ease; stroke-linecap: round; fill: none; stroke-width: 2; opacity: 0.15; }
+    path.active-path { opacity: 1 !important; stroke-width: 3; filter: drop-shadow(0 0 5px var(--accent-blue)); }
+    path.faded { opacity: 0.02 !important; }
+
+    .zoom-controls { position: fixed; bottom: 25px; right: 25px; display: flex; flex-direction: column; gap: 8px; z-index: 2000; }
+    .zoom-btn { width: 45px; height: 45px; border-radius: 10px; border: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.9); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h2 style="margin:0; font-weight:900; color: #fff; font-size: 1.1rem; letter-spacing: 1px;">EE PROGRESS TRACKER</h2>
+  <div class="progress-container">
+    <div class="progress-bar-bg"><div id="progress-bar-fill"></div></div>
+    <div id="progress-text">PROGRESS: 0 / 128 CREDITS (0%)</div>
+  </div>
+  <div class="legend">
+    <div class="legend-item"><div class="dot" style="background:var(--accent-blue)"></div> Pre</div>
+    <div class="legend-item"><div class="dot" style="background:var(--accent-yellow)"></div> Co</div>
+    <div class="legend-item"><div class="dot" style="background:var(--accent-green)"></div> Done (Dbl Click)</div>
+  </div>
+</header>
+
+<div class="zoom-controls">
+  <button class="zoom-btn" onclick="manualZoom(1.2)">+</button>
+  <button class="zoom-btn" onclick="manualZoom(0.8)">-</button>
+  <button class="zoom-btn" onclick="resetView()" style="font-size: 9px;">RESET</button>
+</div>
+
+<div class="viewport" id="viewport">
+  <div class="flowchart-wrapper" id="main-wrapper">
+    <svg id="svg-canvas"></svg>
+
+    <div class="year-section">
+      <div class="year-sidebar"><span class="year-label">YEAR 1</span></div>
+      <div class="semesters-container">
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 1</div>
+          <div class="course-list">
+            <div class="card" id="CHEM101" data-ch="4"><div class="code">CHEM 101</div><div class="name">General Chemistry I</div><div class="ch-badge">4 CH</div></div>
+            <div class="card" id="PHY101" data-ch="4"><div class="code">PHY 101</div><div class="name">General Physics I</div><div class="ch-badge">4 CH</div></div>
+            <div class="card" id="MA101" data-ch="4"><div class="code">MA 101</div><div class="name">Calculus I</div><div class="ch-badge">4 CH</div></div>
+            <div class="card" id="ESP101" data-ch="3"><div class="code">ESP 101</div><div class="name">Intro Academic Discourse</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="ARB101" data-ch="2"><div class="code">ARB 101</div><div class="name">Practical Grammar</div><div class="ch-badge">2 CH</div></div>
+            <div class="card" id="PE101" data-ch="1"><div class="code">PE 101</div><div class="name">Health & Physical Ed</div><div class="ch-badge">1 CH</div></div>
+          </div>
+        </div>
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 2</div>
+          <div class="course-list">
+            <div class="card" id="PHY102" data-ch="4"><div class="code">PHY 102</div><div class="name">General Physics II</div><div class="ch-badge">4 CH</div></div>
+            <div class="card" id="MA102" data-ch="4"><div class="code">MA 102</div><div class="name">Calculus II</div><div class="ch-badge">4 CH</div></div>
+            <div class="card" id="ESP102" data-ch="3"><div class="code">ESP 102</div><div class="name">Intro Report Writing</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="ARB102" data-ch="2"><div class="code">ARB 102</div><div class="name">Objective Writing</div><div class="ch-badge">2 CH</div></div>
+            <div class="card" id="ISL101" data-ch="2"><div class="code">ISL 101</div><div class="name">Belief & Consequences</div><div class="ch-badge">2 CH</div></div>
+            <div class="card" id="CSE101" data-ch="2"><div class="code">CSE 101</div><div class="name">Intro to Programming</div><div class="ch-badge">2 CH</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="year-section">
+      <div class="year-sidebar"><span class="year-label">YEAR 2</span></div>
+      <div class="semesters-container">
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 3</div>
+          <div class="course-list">
+            <div class="card" id="MA201" data-ch="3"><div class="code">MA 201</div><div class="name">Calculus III</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="MA202" data-ch="3"><div class="code">MA 202</div><div class="name">Prob & Stats</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="ESP201" data-ch="3"><div class="code">ESP 201</div><div class="name">Academic Communication</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="ISL201" data-ch="2"><div class="code">ISL 201</div><div class="name">Professional Ethics</div><div class="ch-badge">2 CH</div></div>
+            <div class="card" id="CSE221" data-ch="3"><div class="code">CSE 221</div><div class="name">Digital Logic Design</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE201" data-ch="3"><div class="code">EE 201</div><div class="name">Electrical Circuits I</div><div class="ch-badge">3 CH</div></div>
+          </div>
+        </div>
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 4</div>
+          <div class="course-list">
+            <div class="card" id="MA203" data-ch="3"><div class="code">MA 203</div><div class="name">Differential Equations</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="CSE201" data-ch="3"><div class="code">CSE 201</div><div class="name">Intro to Data Science</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="ARB201" data-ch="2"><div class="code">ARB 201</div><div class="name">Literary Styles</div><div class="ch-badge">2 CH</div></div>
+            <div class="card" id="EE202" data-ch="3"><div class="code">EE 202</div><div class="name">Electronics I</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE203" data-ch="1"><div class="code">EE 203</div><div class="name">Electronics I Lab</div><div class="ch-badge">1 CH</div></div>
+            <div class="card" id="EE204" data-ch="3"><div class="code">EE 204</div><div class="name">Signals and Systems</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE205" data-ch="2"><div class="code">EE 205</div><div class="name">Electric Circuits II</div><div class="ch-badge">2 CH</div></div>
+            <div class="card" id="EE206" data-ch="1"><div class="code">EE 206</div><div class="name">Electric Circuits II Lab</div><div class="ch-badge">1 CH</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="year-section">
+      <div class="year-sidebar"><span class="year-label">YEAR 3</span></div>
+      <div class="semesters-container">
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 5</div>
+          <div class="course-list">
+            <div class="card" id="CSE301" data-ch="3"><div class="code">CSE 301</div><div class="name">Intro to AI</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="ISL301" data-ch="2"><div class="code">ISL 301</div><div class="name">Human Rights</div><div class="ch-badge">2 CH</div></div>
+            <div class="card" id="PHY321" data-ch="3"><div class="code">PHY 321</div><div class="name">Electricity & Mag</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE301" data-ch="3"><div class="code">EE 301</div><div class="name">Electronics II</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE302" data-ch="3"><div class="code">EE 302</div><div class="name">Energy Engineering</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE303" data-ch="1"><div class="code">EE 303</div><div class="name">Energy Lab</div><div class="ch-badge">1 CH</div></div>
+            <div class="card" id="EE304" data-ch="3"><div class="code">EE 304</div><div class="name">Control Engineering</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE305" data-ch="1"><div class="code">EE 305</div><div class="name">Control Lab</div><div class="ch-badge">1 CH</div></div>
+          </div>
+        </div>
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 6</div>
+          <div class="course-list">
+            <div class="card" id="MA301" data-ch="3"><div class="code">MA 301</div><div class="name">Numerical Methods</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="MS301" data-ch="2"><div class="code">MS 301</div><div class="name">Business & Entrepreneur</div><div class="ch-badge">2 CH</div></div>
+            <div class="card" id="EE306" data-ch="3"><div class="code">EE 306</div><div class="name">EE Design Fund.</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE307" data-ch="3"><div class="code">EE 307</div><div class="name">Comm. Engineering</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE308" data-ch="1"><div class="code">EE 308</div><div class="name">Comm. Lab</div><div class="ch-badge">1 CH</div></div>
+            <div class="card" id="EE309" data-ch="3"><div class="code">EE 309</div><div class="name">Digital Systems Eng</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE310" data-ch="1"><div class="code">EE 310</div><div class="name">Digital Systems Lab</div><div class="ch-badge">1 CH</div></div>
+            <div class="card" id="EE300" data-ch="2"><div class="code">EE 300</div><div class="name">Design Project I</div><div class="ch-badge">2 CH</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="year-section">
+      <div class="year-sidebar"><span class="year-label">YEAR 4</span></div>
+      <div class="semesters-container">
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 7</div>
+          <div class="course-list">
+            <div class="card" id="EE401" data-ch="3"><div class="code">EE 401</div><div class="name">EM Waves & App</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE402" data-ch="1"><div class="code">EE 402</div><div class="name">EM Waves Lab</div><div class="ch-badge">1 CH</div></div>
+            <div class="card" id="EE4xx_1" data-ch="3"><div class="code">EE 4XX</div><div class="name">Elective I</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE4xx_2" data-ch="3"><div class="code">EE 4XX</div><div class="name">Elective II</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE4xx_3" data-ch="3"><div class="code">EE 4XX</div><div class="name">Elective III</div><div class="ch-badge">3 CH</div></div>
+            <div class="card" id="EE400" data-ch="2"><div class="code">EE 400</div><div class="name">Design Project II</div><div class="ch-badge">2 CH</div></div>
+          </div>
+        </div>
+        <div class="semester-row">
+          <div class="sem-indicator">SEM 8</div>
+          <div class="course-list">
+            <div class="card" id="EE490" data-ch="6"><div class="code">EE 490</div><div class="name">Internship</div><div class="ch-badge">6 CH</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const wrapper = document.getElementById('main-wrapper');
+const viewport = document.getElementById('viewport');
+const svg = document.getElementById('svg-canvas');
+
+let scale = 0.75, translateX = 0, translateY = 0, isDragging = false, startX, startY;
+
+const connections = [
+  { from: 'MA101', to: 'PHY101', type: 'co' }, { from: 'MA101', to: 'MA102', type: 'pre' },
+  { from: 'PHY101', to: 'PHY102', type: 'pre' }, { from: 'MA102', to: 'PHY102', type: 'co' },
+  { from: 'ESP101', to: 'ESP102', type: 'pre' }, { from: 'ARB101', to: 'ARB102', type: 'pre' },
+  { from: 'MA102', to: 'MA201', type: 'pre' }, { from: 'MA102', to: 'MA202', type: 'pre' },
+  { from: 'ESP102', to: 'ESP201', type: 'pre' }, { from: 'ISL101', to: 'ISL201', type: 'pre' },
+  { from: 'PHY102', to: 'CSE221', type: 'pre' }, { from: 'PHY102', to: 'EE201', type: 'pre' },
+  { from: 'MA102', to: 'EE201', type: 'pre' }, { from: 'MA102', to: 'MA203', type: 'pre' },
+  { from: 'CSE101', to: 'CSE201', type: 'pre' }, { from: 'MA202', to: 'CSE201', type: 'pre' },
+  { from: 'ARB102', to: 'ARB201', type: 'pre' }, { from: 'EE201', to: 'EE202', type: 'pre' },
+  { from: 'CSE221', to: 'EE202', type: 'pre' }, { from: 'EE202', to: 'EE203', type: 'co' },
+  { from: 'EE201', to: 'EE204', type: 'pre' }, { from: 'EE201', to: 'EE205', type: 'pre' },
+  { from: 'EE205', to: 'EE206', type: 'co' }, { from: 'CSE201', to: 'CSE301', type: 'pre' },
+  { from: 'ISL201', to: 'ISL301', type: 'pre' }, { from: 'MA201', to: 'PHY321', type: 'pre' },
+  { from: 'MA203', to: 'PHY321', type: 'pre' }, { from: 'PHY102', to: 'PHY321', type: 'pre' },
+  { from: 'EE202', to: 'EE301', type: 'pre' }, { from: 'EE205', to: 'EE302', type: 'pre' },
+  { from: 'EE302', to: 'EE303', type: 'co' }, { from: 'EE204', to: 'EE304', type: 'pre' },
+  { from: 'EE304', to: 'EE305', type: 'co' }, { from: 'CSE101', to: 'MA301', type: 'pre' },
+  { from: 'MA201', to: 'MA301', type: 'pre' }, { from: 'ESP201', to: 'MS301', type: 'pre' },
+  { from: 'EE202', to: 'EE306', type: 'pre' }, { from: 'EE202', to: 'EE307', type: 'pre' },
+  { from: 'EE307', to: 'EE308', type: 'co' }, { from: 'CSE101', to: 'EE309', type: 'pre' },
+  { from: 'CSE221', to: 'EE309', type: 'pre' }, { from: 'EE309', to: 'EE310', type: 'co' },
+  { from: 'ESP201', to: 'EE300', type: 'pre' }, { from: 'EE301', to: 'EE300', type: 'pre' },
+  { from: 'EE302', to: 'EE300', type: 'pre' }, { from: 'EE304', to: 'EE300', type: 'pre' },
+  { from: 'PHY321', to: 'EE401', type: 'pre' }, { from: 'EE401', to: 'EE402', type: 'co' },
+  { from: 'EE300', to: 'EE4xx_1', type: 'pre' }, { from: 'EE300', to: 'EE4xx_2', type: 'pre' },
+  { from: 'EE300', to: 'EE4xx_3', type: 'pre' }, { from: 'MS301', to: 'EE400', type: 'pre' },
+  { from: 'EE306', to: 'EE400', type: 'pre' }, { from: 'EE300', to: 'EE400', type: 'pre' }
+];
+
+function updateTransform() { wrapper.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`; }
+
+viewport.addEventListener('mousedown', (e) => { if(e.target.closest('.card')) return; isDragging = true; startX = e.clientX - translateX; startY = e.clientY - translateY; });
+window.addEventListener('mousemove', (e) => { if(!isDragging) return; translateX = e.clientX - startX; translateY = e.clientY - startY; updateTransform(); });
+window.addEventListener('mouseup', () => isDragging = false);
+viewport.addEventListener('wheel', (e) => { e.preventDefault(); scale = Math.min(Math.max(0.2, scale * (e.deltaY > 0 ? 0.9 : 1.1)), 3); updateTransform(); }, { passive: false });
+
+function manualZoom(f) { scale = Math.min(Math.max(0.2, scale * f), 3); updateTransform(); }
+function resetView() { scale = 0.75; translateX = 0; translateY = 0; updateTransform(); }
+
+function drawConnections() {
+  svg.innerHTML = `<defs><marker id="arrow-pre" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#38bdf8"/></marker><marker id="arrow-co" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#fbbf24"/></marker></defs>`;
+  const rect = wrapper.getBoundingClientRect();
+  svg.setAttribute('width', wrapper.scrollWidth); svg.setAttribute('height', wrapper.scrollHeight);
+  connections.forEach(c => {
+    const f = document.getElementById(c.from), t = document.getElementById(c.to);
+    if(!f || !t) return;
+    const r1 = f.getBoundingClientRect(), r2 = t.getBoundingClientRect();
+    const x1 = (r1.left + r1.width/2 - rect.left)/scale, y1 = (r1.bottom - rect.top)/scale;
+    const x2 = (r2.left + r2.width/2 - rect.left)/scale, y2 = (r2.top - rect.top)/scale;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    let d;
+    if(c.type === 'co') {
+      const cx1 = (r1.right - rect.left)/scale, cy1 = (r1.top + r1.height/2 - rect.top)/scale;
+      const cx2 = (r2.left - rect.left)/scale, cy2 = (r2.top + r2.height/2 - rect.top)/scale;
+      d = `M ${cx1} ${cy1} L ${cx1+15} ${cy1} L ${cx1+15} ${cy2} L ${cx2-4} ${cy2}`;
+      path.setAttribute('stroke', '#fbbf24'); path.setAttribute('marker-end', 'url(#arrow-co)');
+    } else {
+      const my = y1 + (y2-y1)/2; d = `M ${x1} ${y1} L ${x1} ${my} L ${x2} ${my} L ${x2} ${y2-4}`;
+      path.setAttribute('stroke', '#38bdf8'); path.setAttribute('marker-end', 'url(#arrow-pre)');
+    }
+    path.setAttribute('d', d); path.setAttribute('data-from', c.from); path.setAttribute('data-to', c.to);
+    svg.appendChild(path);
+  });
+}
+
+function updateProgress() {
+  let earned = 0;
+  document.querySelectorAll('.card.completed').forEach(c => earned += parseInt(c.getAttribute('data-ch')));
+  const percent = Math.min((earned / 128) * 100, 100).toFixed(1);
+  document.getElementById('progress-bar-fill').style.width = percent + '%';
+  document.getElementById('progress-text').innerText = `PROGRESS: ${earned} / 128 CREDITS (${percent}%)`;
+}
+
+function initInteractions() {
+  const cards = document.querySelectorAll('.card'), paths = document.querySelectorAll('path');
+  cards.forEach(card => {
+    card.addEventListener('click', (e) => {
+      e.stopPropagation(); if(card.classList.contains('selected')) { clearSelection(); return; }
+      clearSelection(); cards.forEach(c => c.classList.add('dimmed')); paths.forEach(p => p.classList.add('faded'));
+      card.classList.remove('dimmed'); card.classList.add('selected');
+      paths.forEach(p => {
+        if(p.getAttribute('data-from') === card.id || p.getAttribute('data-to') === card.id) {
+          p.classList.remove('faded'); p.classList.add('active-path');
+          document.getElementById(p.getAttribute('data-from')).classList.remove('dimmed');
+          document.getElementById(p.getAttribute('data-to')).classList.remove('dimmed');
+        }
+      });
+    });
+    // Double click for completion
+    card.addEventListener('dblclick', () => { card.classList.toggle('completed'); updateProgress(); save(); });
+    let lt = 0; card.addEventListener('touchstart', (e) => { 
+      let n = Date.now(); if(n - lt < 300) { card.classList.toggle('completed'); updateProgress(); save(); if(navigator.vibrate) navigator.vibrate(40); } lt = n; 
+    });
+  });
+  document.addEventListener('click', clearSelection);
+}
+
+function clearSelection() {
+  document.querySelectorAll('.card').forEach(c => c.classList.remove('dimmed', 'selected'));
+  document.querySelectorAll('path').forEach(p => p.classList.remove('faded', 'active-path'));
+}
+
+function save() { const ids = Array.from(document.querySelectorAll('.card.completed')).map(c => c.id); localStorage.setItem('ee_v3_ids', JSON.stringify(ids)); }
+function load() { 
+  const saved = localStorage.getItem('ee_v3_ids'); 
+  if(saved) JSON.parse(saved).forEach(id => { const el = document.getElementById(id); if(el) el.classList.add('completed'); });
+}
+
+window.onload = () => { resetView(); drawConnections(); initInteractions(); load(); updateProgress(); };
+window.onresize = drawConnections;
+</script>
+</body>
+</html>
