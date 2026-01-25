@@ -125,7 +125,7 @@ window.updateRowStatus = async (id, type) => {
     else if (type === 'release') updates = { status: 'pending', processed_by_user_id: null, processed_by_name: null };
     else if (type === 'approved') updates = { status: 'approved' };
     
-    const { error } = await supa.from("resources").update(updates).eq("id", id);
+    const { error } = await supa.from("resources").update(updates).eq("id", id).select();
     if (!error) { 
         notify("تم التحديث بنجاح", "success"); 
         loadData(); 
