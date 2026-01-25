@@ -51,7 +51,6 @@ async function checkUser() {
         return;
     }
 
-    // فحص هل المستخدم مسجل في جدول الـ admins يدوياً؟
     const { data: admin, error } = await supa.from("admins")
         .select("*")
         .eq("user_id", session.user.id)
@@ -65,7 +64,6 @@ async function checkUser() {
 
     currentUser = { id: session.user.id, name: admin.full_name, isSuper: !!admin.is_super };
     
-    // إظهار لوحة التحكم والتحقق من زر "شغل الشباب"
     document.getElementById("loginCard").classList.add("hidden");
     document.getElementById("adminPanel").classList.remove("hidden");
     
@@ -120,7 +118,7 @@ window.showTeamWork = () => {
     document.body.insertAdjacentHTML('beforeend', html);
 };
 
-// 6. التحديث
+// 6. التحديث (تم تحسينه للابتوب عبر window)
 window.updateRowStatus = async (id, type) => {
     let updates = {};
     if (type === 'claim') updates = { status: 'reviewing', processed_by_user_id: currentUser.id, processed_by_name: currentUser.name };
@@ -128,10 +126,17 @@ window.updateRowStatus = async (id, type) => {
     else if (type === 'approved') updates = { status: 'approved' };
     
     const { error } = await supa.from("resources").update(updates).eq("id", id);
-    if (!error) { notify("تم التحديث بنجاح", "success"); loadData(); }
+    if (!error) { 
+        notify("تم التحديث بنجاح", "success"); 
+        loadData(); 
+    } else {
+        notify("خطأ في الصلاحيات أو الاتصال", "error");
+    }
 };
 
-window.updateNote = async (id, note) => { await supa.from("resources").update({ admin_note: note }).eq("id", id); };
+window.updateNote = async (id, note) => { 
+    await supa.from("resources").update({ admin_note: note }).eq("id", id); 
+};
 
 // 7. الرندرة والتنسيق المتجاوب
 function render() {
@@ -143,15 +148,19 @@ function render() {
 
     const items = filtered.map(row => {
         const canManage = (row.processed_by_user_id === currentUser.id) || currentUser.isSuper;
-        const rId = `'${row.id}'`;
+        const rId = row.id; // تم حذف الاقتباسات الزائدة
         const typeStyle = { pdf: 'bg-rose-500/10 text-rose-500 border-rose-500/20', png: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' }[row.file_type?.toLowerCase()] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
 
-        let btns = `<a href="${row.file_url}" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-[10px] font-black transition-all text-center">فتح</a>`;
-        if (row.status === 'pending') btns += `<button onclick="updateRowStatus(${rId}, 'claim')" class="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-5 py-3 rounded-xl text-[10px] font-black transition-all">حجز</button>`;
-        else if (row.status === 'reviewing' && canManage) {
-            btns += `<button onclick="updateRowStatus(${rId}, 'approved')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl text-[10px] font-black transition-all shadow-lg shadow-emerald-600/20">اعتماد ✅</button>`;
-            btns += `<button onclick="updateRowStatus(${rId}, 'release')" class="text-slate-500 hover:text-white px-2 py-2 text-[10px]">إلغاء</button>`;
-        } else if (row.status === 'reviewing') btns += `<span class="text-[9px] text-slate-500 italic py-2">🔒 بيد ${row.processed_by_name}</span>`;
+        let btns = `<a href="${row.file_url}" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-[10px] font-black transition-all text-center inline-block">فتح</a>`;
+        
+        if (row.status === 'pending') {
+            btns += `<button onclick="window.updateRowStatus(${rId}, 'claim')" class="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-5 py-3 rounded-xl text-[10px] font-black transition-all">حجز</button>`;
+        } else if (row.status === 'reviewing' && canManage) {
+            btns += `<button onclick="window.updateRowStatus(${rId}, 'approved')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl text-[10px] font-black transition-all shadow-lg shadow-emerald-600/20">اعتماد ✅</button>`;
+            btns += `<button onclick="window.updateRowStatus(${rId}, 'release')" class="text-slate-500 hover:text-white px-2 py-2 text-[10px] font-bold">إلغاء</button>`;
+        } else if (row.status === 'reviewing') {
+            btns += `<span class="text-[9px] text-slate-500 italic py-2">🔒 بيد ${row.processed_by_name}</span>`;
+        }
 
         const studentNote = row.note ? `
             <div class="mt-3 p-3 bg-amber-400/5 border border-amber-400/20 rounded-2xl flex gap-3 items-start">
@@ -169,17 +178,17 @@ function render() {
                     <div class="text-[9px] text-slate-500 font-bold mt-3 uppercase tracking-wider">👤 الرافع: ${row.uploader_name || 'غير معروف'}</div>
                 </td>
                 <td class="p-6 text-center"><span class="px-3 py-1 rounded-full text-[9px] font-black border uppercase ${typeStyle}">${row.file_type || 'File'}</span></td>
-                <td class="p-6"><input type="text" onblur="updateNote(${rId}, this.value)" value="${row.admin_note || ''}" placeholder="ملاحظة إدارية..." class="w-full bg-black/40 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 focus:border-blue-500 outline-none transition-all"></td>
+                <td class="p-6"><input type="text" onblur="window.updateNote(${rId}, this.value)" value="${row.admin_note || ''}" placeholder="..." class="w-full bg-black/40 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 focus:border-blue-500 outline-none transition-all"></td>
                 <td class="p-6 text-center text-[10px] font-black uppercase ${row.processed_by_name ? 'text-blue-400' : 'text-slate-600'}">${row.processed_by_name || "متاح"}</td>
-                <td class="p-6 flex gap-2 justify-end items-center h-full mt-4">${btns}</td>
+                <td class="p-6"><div class="flex gap-2 justify-end items-center">${btns}</div></td>
             </tr>`, 
-            mobile: `<div class="bg-slate-900/40 p-6 rounded-[2.5rem] border border-white/5 space-y-4 shadow-xl">
+            mobile: `<div class="bg-slate-900/40 p-6 rounded-[2.5rem] border border-white/5 space-y-4 shadow-xl mb-4">
                 <div class="flex justify-between items-start">
                     <div><h3 class="font-black text-white text-base">${row.subject}</h3><p class="text-[10px] text-slate-500 font-bold mt-1 tracking-tight">👤 ${row.uploader_name || 'مجهول'}</p></div>
                     <span class="px-2 py-1 rounded-lg text-[8px] font-black border uppercase ${typeStyle}">${row.file_type || 'FT'}</span>
                 </div>
                 ${studentNote}
-                <input type="text" onblur="updateNote(${rId}, this.value)" value="${row.admin_note || ''}" class="w-full bg-black/60 border border-slate-800 rounded-xl p-4 text-xs text-slate-300" placeholder="ملاحظة الإدارة...">
+                <input type="text" onblur="window.updateNote(${rId}, this.value)" value="${row.admin_note || ''}" class="w-full bg-black/60 border border-slate-800 rounded-xl p-4 text-xs text-slate-300" placeholder="ملاحظة الإدارة...">
                 <div class="flex gap-2 justify-between pt-4 border-t border-white/5">${btns}</div>
             </div>` 
         };
@@ -199,9 +208,9 @@ function updateStats() {
     };
     const statsDiv = document.getElementById("productivityStats");
     if (statsDiv) statsDiv.innerHTML = `
-        <div class="text-center"><p class="text-[8px] text-emerald-400 font-black mb-1 uppercase">إنجازك</p><p class="text-2xl font-black text-white">${mine.done}</p></div>
+        <div class="text-center"><p class="text-[8px] text-emerald-400 font-black mb-1 uppercase text-center">إنجازك</p><p class="text-2xl font-black text-white">${mine.done}</p></div>
         <div class="w-px h-8 bg-slate-800 mx-4"></div>
-        <div class="text-center"><p class="text-[8px] text-amber-400 font-black mb-1 uppercase">حجزك</p><p class="text-2xl font-black text-white">${mine.pending}</p></div>`;
+        <div class="text-center"><p class="text-[8px] text-amber-400 font-black mb-1 uppercase text-center">حجزك</p><p class="text-2xl font-black text-white">${mine.pending}</p></div>`;
     
     const pct = total > 0 ? Math.round((approved / total) * 100) : 0;
     if (document.getElementById("progressBar")) document.getElementById("progressBar").style.width = `${pct}%`;
