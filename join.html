@@ -204,6 +204,22 @@
     const form = document.getElementById("joinForm");
     const formWrapper = document.getElementById("formWrapper");
     const successMessage = document.getElementById("successMessage");
+    // --- التحكم بالجدول ---
+  // حطها false عشان تقفل الزر وتظهر "سيفتح وقت الاختبارات"
+  // حطها true عشان يفتح الزر ويصير شغال طبيعي
+  const isExamOpen = false; 
+
+  const examBtn = document.getElementById('examBtn');
+  const examStatus = document.getElementById('examStatus');
+
+  if (!isExamOpen) {
+    // 1. جعل الزر شبه شفاف ومنع الضغط عليه
+    examBtn.style.opacity = "0.6";
+    examBtn.style.pointerEvents = "none";
+    examBtn.classList.add('border-dashed', 'border-white/10');
+
+    // 2. إظهار جملة "سيفتح وقت الاختبارات"
+    examStatus.classList.remove('hidden');
 
     form.onsubmit = function(e) {
       e.preventDefault();
