@@ -389,10 +389,38 @@
     </div>
   </footer>
   
+  <script>
+  // كود تشغيل السايد بار فقط
+  document.addEventListener("DOMContentLoaded", () => {
+    const sidebar = document.getElementById('sidebar');
+    const openSidebarBtn = document.getElementById('openSidebar');
+    const closeSidebarBtn = document.getElementById('closeSidebar');
+    const overlay = document.getElementById('overlay');
 
+    // وظيفة الفتح
+    if (openSidebarBtn) {
+      openSidebarBtn.addEventListener('click', () => {
+        sidebar.classList.remove('translate-x-full');
+        overlay.classList.remove('hidden');
+        document.body.style.overflow = "hidden"; // منع التمرير عند فتح القائمة
+      });
+    }
+
+    // وظيفة الإغلاق (عند الضغط على الزر أو الخلفية المظلمة)
+    const closeSidebar = () => {
+      sidebar.classList.add('translate-x-full');
+      overlay.classList.add('hidden');
+      document.body.style.overflow = ""; // إعادة التمرير
+    };
+
+    if (closeSidebarBtn) closeSidebarBtn.addEventListener('click', closeSidebar);
+    if (overlay) overlay.addEventListener('click', closeSidebar);
+  });
+</script>
   <script src="assets/js/app.js"></script>
 </body>
 </html>
+
 
 
 
