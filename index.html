@@ -106,10 +106,13 @@
         <i class="fa-solid fa-diagram-project text-indigo-300/70 group-hover:text-indigo-300 w-5 text-center transition-colors" aria-hidden="true"></i>
         <span class="text-sm font-medium">EE Flowchart</span>
       </a>
-      <a href="examss.html" class="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition group">
-        <i class="fa-solid fa-calendar-check text-indigo-300/70 group-hover:text-indigo-300 w-5 text-center transition-colors" aria-hidden="true"></i>
-        <span class="text-sm font-medium">جدول الإختبارات</span>
-      </a>
+      <a id="examBtn" href="examss.html" class="flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition group">
+    <i class="fa-solid fa-calendar-check text-indigo-300/70 group-hover:text-indigo-300 w-5 text-center transition-colors"></i>
+    <div class="flex flex-col">
+        <span id="examBtnText" class="text-sm font-medium">جدول الإختبارات</span>
+        <span id="examStatus" class="hidden text-[10px] text-orange-400/80 font-bold">سيفتح وقت الاختبارات</span>
+    </div>
+</a>
 
       <div class="py-3"><hr class="border-white/5"></div>
 
@@ -432,6 +435,7 @@
 
 </body>
 </html>
+
 
 
 
