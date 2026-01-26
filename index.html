@@ -23,6 +23,28 @@
 </head>
 
 <body class="flex flex-col overflow-x-hidden">
+  // تحديد العناصر من الصفحة
+const sidebar = document.getElementById('sidebar');
+const openSidebarBtn = document.getElementById('openSidebar');
+const closeSidebarBtn = document.getElementById('closeSidebar');
+const overlay = document.getElementById('overlay');
+
+// وظيفة لفتح القائمة
+function openMenu() {
+    sidebar.classList.remove('translate-x-full'); // إزالة الإزاحة لليمين ليظهر
+    overlay.classList.remove('hidden');           // إظهار الخلفية المظلمة
+}
+
+// وظيفة لإغلاق القائمة
+function closeMenu() {
+    sidebar.classList.add('translate-x-full');    // إعادة الإزاحة لليمين ليختفي
+    overlay.classList.add('hidden');              // إخفاء الخلفية المظلمة
+}
+
+// ربط الأزرار بالوظائف
+openSidebarBtn.addEventListener('click', openMenu);
+closeSidebarBtn.addEventListener('click', closeMenu);
+overlay.addEventListener('click', closeMenu); // إغلاق عند الضغط خارج القائمة
 
   <div id="overlay" class="fixed inset-0 bg-black/60 hidden z-40" aria-hidden="true"></div>
 
@@ -389,5 +411,6 @@
   <script src="assets/js/app.js"></script>
 </body>
 </html>
+
 
 
