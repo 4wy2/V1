@@ -3,6 +3,26 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const BUCKET = "ee-resources";
+// --- نظام التحكم بجدول الاختبارات ---
+document.addEventListener("DOMContentLoaded", function() {
+    // اجعلها true إذا أردت فتح الزر، و false لإغلاقه وإظهار الرسالة
+    const isExamTableReady = false; 
+
+    const examBtn = document.getElementById('examBtn');
+    const examStatus = document.getElementById('examStatus');
+
+    if (examBtn && !isExamTableReady) {
+        // 1. تغيير شكل الزر ليوحي بأنه غير نشط
+        examBtn.style.opacity = "0.5";
+        examBtn.style.pointerEvents = "none"; // يمنع النقر تماماً
+        examBtn.classList.add('border', 'border-dashed', 'border-white/5');
+
+        // 2. إظهار جملة "سيفتح وقت الاختبارات"
+        if (examStatus) {
+            examStatus.classList.remove('hidden');
+        }
+    }
+});
 
 document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("uploadModal");
