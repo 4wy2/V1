@@ -2,84 +2,127 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EE DRIVE PRO | النظام المتكامل</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>EE DRIVE PRO | Ultra Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --accent: #6366f1; --glass: rgba(15, 23, 42, 0.85); }
-        body { font-family: 'Cairo', sans-serif; background: #020617; color: #f8fafc; overflow-x: hidden; }
-        .ultra-glass { background: var(--glass); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        #previewPanel { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; }
-        .panel-hidden { transform: translateX(100%); }
-        .item-card { transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.05); }
-        .item-card:hover { transform: translateY(-5px); border-color: var(--accent); background: rgba(99, 102, 241, 0.05); }
-        #toastContainer { position: fixed; bottom: 2rem; left: 2rem; z-index: 1000; display: flex; flex-direction: column; gap: 0.6rem; }
-        .animate-in { animation: slideIn 0.3s ease forwards; }
-        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        .status-badge { padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; }
-        .loading-shimmer { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        :root { --accent: #6366f1; --bg: #020617; }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: var(--bg); 
+            color: #f8fafc;
+            background-image: radial-gradient(circle at 50% -20%, #1e1b4b 0%, var(--bg) 80%);
+            min-height: 100vh;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* تحسينات الجوال للوحة المعاينة */
+        #previewPanel {
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        @media (max-width: 768px) {
+            #previewPanel {
+                bottom: 0; left: 0; right: 0; top: auto;
+                height: 70vh; width: 100%;
+                border-radius: 2.5rem 2.5rem 0 0;
+                transform: translateY(100%);
+                border-top: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            #previewPanel.active { transform: translateY(0); }
+        }
+
+        @media (min-width: 769px) {
+            #previewPanel {
+                left: 0; top: 0; height: 100%; width: 400px;
+                transform: translateX(-100%);
+                border-right: 1px solid rgba(255, 255, 255, 0.1);
+            }
+            #previewPanel.active { transform: translateX(0); }
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1 0%, #4338ca 100%);
+            transition: all 0.2s;
+        }
+        .btn-primary:active { transform: scale(0.95); }
+        
+        .folder-icon { color: #facc15; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2)); }
+        .file-icon { color: #60a5fa; }
     </style>
 </head>
-<body class="bg-[#020617]">
+<body class="overflow-x-hidden">
 
-    <div id="toastContainer"></div>
+    <div id="toastContainer" class="fixed bottom-6 right-6 left-6 md:left-auto md:w-80 z-[2000] flex flex-col gap-3"></div>
 
-    <div id="confirmModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md">
-        <div class="ultra-glass p-8 rounded-[2.5rem] max-w-sm w-[90%] border-red-500/20 text-center">
-            <div class="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+    <div id="confirmModal" class="hidden fixed inset-0 z-[1500] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+        <div class="glass-card p-8 rounded-[2.5rem] max-w-sm w-full text-center border-red-500/20">
+            <div class="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                <svg class="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             </div>
-            <h3 class="text-xl font-bold mb-2">هل أنت متأكد؟</h3>
-            <p id="deleteMsg" class="text-slate-400 text-sm mb-8">سيتم حذف هذا العنصر نهائياً.</p>
-            <div class="flex gap-4">
-                <button onclick="closeConfirm()" class="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-all">إلغاء</button>
-                <button id="finalDeleteBtn" class="flex-1 py-3 rounded-2xl bg-red-600 hover:bg-red-500 transition-all font-bold">حذف</button>
+            <h3 class="text-2xl font-black mb-2">تأكيد الحذف</h3>
+            <p id="deleteMsg" class="text-slate-400 mb-8 text-sm leading-relaxed">سيتم حذف هذا العنصر وجميع محتوياته (إذا كان مجلداً) بشكل نهائي من السحابة.</p>
+            <div class="flex flex-col gap-3">
+                <button id="finalDeleteBtn" onclick="executeDelete()" class="w-full py-4 rounded-2xl bg-red-600 text-white font-black shadow-lg shadow-red-900/20">احذف كل شيء</button>
+                <button onclick="closeConfirm()" class="w-full py-4 rounded-2xl bg-white/5 font-bold">تراجع</button>
             </div>
         </div>
     </div>
 
-    <div id="previewPanel" class="fixed top-0 right-0 h-full w-full md:w-[450px] ultra-glass border-l border-white/10 panel-hidden p-8 overflow-y-auto">
+    <nav class="fixed top-0 w-full z-50 px-4 py-4">
+        <div class="max-w-7xl mx-auto glass-card rounded-[2rem] p-3 md:p-4 flex justify-between items-center shadow-2xl">
+            <div class="flex items-center gap-4 overflow-hidden">
+                <div class="text-xl font-black text-indigo-500 px-2" onclick="navigateTo('')">EE</div>
+                <div id="breadcrumb" class="flex items-center gap-1 text-[10px] md:text-xs font-bold text-slate-500 overflow-x-auto whitespace-nowrap custom-scrollbar"></div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="createNewFolder()" class="p-3 rounded-xl bg-white/5 hover:bg-white/10 text-yellow-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                </button>
+                <button onclick="triggerUpload()" class="btn-primary p-3 md:px-6 rounded-xl text-xs font-black flex items-center gap-2">
+                    <svg class="w-6 h-6 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                    <span class="hidden md:inline">رفع ملفات</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div id="previewPanel" class="fixed glass-card p-6 md:p-8 overflow-y-auto shadow-2xl">
+        <div class="w-12 h-1.5 bg-white/10 rounded-full mx-auto mb-6 md:hidden"></div>
         <div class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-black text-indigo-400">بيانات الملف</h2>
-            <button onclick="closePreview()" class="p-2 hover:bg-white/10 rounded-full">
+            <h2 class="text-xl font-black">التفاصيل</h2>
+            <button onclick="closePreview()" class="p-2 bg-white/5 rounded-full">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
         <div id="previewContent" class="space-y-6"></div>
     </div>
 
-    <nav class="fixed top-0 w-full z-50 ultra-glass px-6 py-4 flex justify-between items-center">
-        <div class="flex items-center gap-4 overflow-hidden">
-            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/20 cursor-pointer" onclick="navigateTo('')">EE</div>
-            <div id="breadcrumb" class="flex items-center gap-2 text-xs font-bold text-slate-400 overflow-x-auto whitespace-nowrap"></div>
-        </div>
-        <div class="flex items-center gap-3">
-            <a href="admin.html" class="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[11px] font-bold transition-all">لوحة الإدارة</a>
-            <button onclick="createNewFolder()" class="p-3 rounded-xl bg-white/5 hover:bg-indigo-500/20 border border-white/10 text-indigo-400 transition-all"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></button>
-            <button id="uploadBtn" onclick="triggerUpload()" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-3 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition-all">
-                <span>رفع ملفات</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-            </button>
-            <input type="file" id="fileUpload" class="hidden" multiple onchange="handleUpload(this.files)">
-        </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto pt-32 px-6 pb-20">
-        <div class="relative mb-10 group">
-            <input type="text" id="searchInput" oninput="handleSearch()" placeholder="ابحث في ملفاتك..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-14 py-4 text-sm focus:border-indigo-500 outline-none transition-all">
-            <svg class="absolute right-5 top-4.5 w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+    <main class="max-w-7xl mx-auto pt-28 px-4 md:px-6 pb-20">
+        <div class="relative mb-8">
+            <input type="text" id="searchInput" oninput="handleSearch()" placeholder="ابحث عن أي ملف..." 
+                   class="w-full bg-white/5 border border-white/10 rounded-2xl px-12 py-4 md:py-5 text-sm md:text-base focus:ring-2 ring-indigo-500/50 outline-none transition-all">
+            <svg class="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
 
-        <div id="driveGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
-
-        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-40 opacity-30">
+        <div id="driveGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 md:gap-6"></div>
+        
+        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-20 opacity-20">
             <svg class="w-20 h-20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-            <p class="text-xl font-medium">المجلد فارغ</p>
+            <p class="font-bold">المجلد فارغ</p>
         </div>
     </main>
+
+    <input type="file" id="fileUpload" class="hidden" multiple onchange="handleUpload(this.files)">
 
     <script>
         const CONFIG = {
@@ -93,81 +136,119 @@
         let allItems = { folders: [], files: [] };
         let deleteTarget = null;
 
-        // إشعارات احترافية
         function showToast(msg, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            const themes = {
-                success: 'bg-green-500/20 text-green-400 border-green-500/30',
-                error: 'bg-red-500/20 text-red-400 border-red-500/30',
-                info: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
-            };
-            toast.className = `p-4 rounded-2xl border backdrop-blur-md shadow-xl animate-in min-w-[280px] font-bold text-sm ${themes[type]}`;
+            const colors = { success: 'bg-emerald-500 text-white', error: 'bg-red-500 text-white', info: 'bg-indigo-600 text-white' };
+            toast.className = `p-4 rounded-xl shadow-xl font-bold text-xs flex items-center justify-center animate-bounce ${colors[type]}`;
             toast.innerText = msg;
             container.appendChild(toast);
-            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
+            setTimeout(() => toast.remove(), 3000);
         }
 
-        // جلب البيانات
         async function loadDrive() {
-            renderSkeletons();
+            document.getElementById('driveGrid').innerHTML = Array(8).fill('<div class="h-32 rounded-3xl glass-card animate-pulse"></div>').join('');
             try {
                 const response = await fetch(`${CONFIG.WORKER}?prefix=${encodeURIComponent(currentPrefix)}`);
                 allItems = await response.json();
                 renderItems(allItems);
                 updateBreadcrumbs();
-            } catch (e) { showToast("خطأ في جلب البيانات", "error"); }
+            } catch (e) { showToast("فشل في تحديث الملفات", "error"); }
         }
 
-        // عرض العناصر
         function renderItems(data) {
             const grid = document.getElementById('driveGrid');
             grid.innerHTML = '';
-            data.folders.forEach(path => grid.appendChild(createCard(path, true)));
+            data.folders.filter(p => p !== currentPrefix).forEach(path => grid.appendChild(createCard(path, true)));
             data.files.forEach(file => grid.appendChild(createCard(file.key, false, file)));
             document.getElementById('emptyState').classList.toggle('hidden', grid.children.length > 0);
         }
 
-        // إنشاء بطاقة عنصر
         function createCard(path, isFolder, file = null) {
-            const name = path.replace(currentPrefix, "").replace("/", "");
-            if (!name && !isFolder) return document.createElement('div');
-
-            const div = document.createElement('div');
-            div.className = 'item-card p-6 rounded-[2.5rem] bg-white/5 cursor-pointer relative group animate-in';
+            const name = path.split('/').filter(Boolean).pop();
+            const card = document.createElement('div');
+            card.className = 'glass-card p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] flex flex-col items-center relative cursor-pointer active:scale-95 transition-all';
             
-            if (isFolder) {
-                div.onclick = (e) => { if(!e.target.closest('button')) navigateTo(path); };
-                div.innerHTML = `<div class="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-4"><svg class="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg></div>
-                                 <h3 class="text-sm font-bold truncate">${name}</h3>`;
-            } else {
-                div.onclick = (e) => { if(!e.target.closest('button')) openPreview(file); };
-                div.innerHTML = `<div class="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 text-[10px] font-black text-indigo-300">${name.split('.').pop().toUpperCase()}</div>
-                                 <h3 class="text-sm font-bold truncate">${name}</h3>
-                                 <p class="text-[10px] text-slate-500 mt-1">${formatSize(file.size)}</p>`;
+            const icon = isFolder ? 
+                `<svg class="w-12 h-12 md:w-16 md:h-16 folder-icon" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/></svg>` : 
+                `<svg class="w-12 h-12 md:w-16 md:h-16 file-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>`;
+
+            card.innerHTML = `
+                <div class="mb-3">${icon}</div>
+                <span class="text-[10px] md:text-xs font-black text-center w-full truncate px-1">${name}</span>
+                <button onclick="event.stopPropagation(); confirmDelete('${path}')" class="absolute top-2 left-2 p-2 rounded-lg bg-red-500/10 text-red-500 md:opacity-0 group-hover:opacity-100">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                </button>
+            `;
+            card.onclick = () => isFolder ? navigateTo(path.endsWith('/') ? path : path + '/') : openPreview(file);
+            return card;
+        }
+
+        function confirmDelete(key) {
+            deleteTarget = key;
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        async function executeDelete() {
+            if (!deleteTarget) return;
+            const btn = document.getElementById('finalDeleteBtn');
+            const isFolder = deleteTarget.endsWith('/');
+            btn.disabled = true; btn.innerText = "جاري مسح كل شيء...";
+            
+            try {
+                if (isFolder) {
+                    // حذف المجلد ومحتوياته من Supabase أولاً
+                    await supa.from('resources').delete().like('storage_key', `${deleteTarget}%`);
+                    // ثم الحذف من R2 عبر الووركر
+                    await fetch(`${CONFIG.WORKER}?key=${encodeURIComponent(deleteTarget)}&recursive=true`, { method: 'DELETE' });
+                } else {
+                    await fetch(`${CONFIG.WORKER}?key=${encodeURIComponent(deleteTarget)}`, { method: 'DELETE' });
+                    await supa.from('resources').delete().eq('storage_key', deleteTarget);
+                }
+                
+                showToast("تم الحذف بنجاح", "success");
+                loadDrive();
+                closeConfirm();
+                closePreview();
+            } catch (e) {
+                showToast("حدث خطأ أثناء الحذف", "error");
+            } finally {
+                btn.disabled = false; btn.innerText = "احذف كل شيء";
+                deleteTarget = null;
             }
-
-            const delBtn = document.createElement('button');
-            delBtn.className = "absolute top-4 left-4 p-2.5 bg-red-500/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all";
-            delBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
-            delBtn.onclick = (e) => { e.stopPropagation(); confirmDelete(path); };
-            div.appendChild(delBtn);
-            return div;
         }
 
-        // نظام البحث اللحظي
-        function handleSearch() {
-            const term = document.getElementById('searchInput').value.toLowerCase();
-            const filteredFolders = allItems.folders.filter(f => f.toLowerCase().includes(term));
-            const filteredFiles = allItems.files.filter(f => f.key.toLowerCase().includes(term));
-            renderItems({ folders: filteredFolders, files: filteredFiles });
+        async function openPreview(file) {
+            const panel = document.getElementById('previewPanel');
+            const content = document.getElementById('previewContent');
+            panel.classList.add('active');
+            content.innerHTML = '<div class="text-center py-10 animate-pulse">جاري جلب البيانات...</div>';
+
+            const { data } = await supa.from('resources').select('*').eq('storage_key', file.key).single();
+            const url = `${CONFIG.WORKER}?file=${encodeURIComponent(file.key)}`;
+
+            content.innerHTML = `
+                <div class="glass-card p-6 rounded-3xl text-center space-y-4">
+                    <div class="w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center mx-auto text-indigo-400">
+                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                    </div>
+                    <h3 class="font-black text-sm break-all">${file.key.split('/').pop()}</h3>
+                    <div class="flex justify-center gap-2">
+                        <span class="px-3 py-1 bg-white/5 rounded-full text-[10px] font-bold">${formatSize(file.size)}</span>
+                        <span class="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-full text-[10px] font-bold uppercase">${data?.file_type || 'file'}</span>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 gap-3">
+                    <a href="${url}" target="_blank" class="w-full btn-primary py-4 rounded-2xl text-center text-sm font-black shadow-lg">تحميل الملف</a>
+                    <button onclick="copyLink('${url}')" class="w-full py-4 bg-white/5 rounded-2xl text-sm font-bold border border-white/10">نسخ رابط المشاركة</button>
+                    <button onclick="confirmDelete('${file.key}')" class="w-full py-4 text-red-500 text-sm font-bold mt-4">حذف نهائي</button>
+                </div>
+            `;
         }
 
-        // نظام الرفع المطور
+        // باقي الوظائف (Upload, Navigation, الخ) بقيت كما هي مع تحسين الأداء
         async function handleUpload(files) {
-            const btn = document.getElementById('uploadBtn');
-            btn.classList.add('opacity-50', 'pointer-events-none');
-            
             for (let file of files) {
                 const fullPath = currentPrefix + file.name;
                 showToast(`جاري رفع ${file.name}...`);
@@ -177,107 +258,52 @@
                         headers: { 'file-name': encodeURIComponent(fullPath), 'Content-Type': file.type }, 
                         body: file 
                     });
-                    
-                    if(res.ok) {
+                    if (res.ok) {
                         await supa.from('resources').insert([{ 
-                            subject: file.name, 
-                            storage_key: fullPath, 
+                            subject: file.name, storage_key: fullPath, 
                             file_url: `${CONFIG.WORKER}?file=${encodeURIComponent(fullPath)}`, 
-                            file_type: file.name.split('.').pop(), 
-                            size: file.size, 
-                            status: 'pending' 
+                            file_type: file.name.split('.').pop(), size: file.size, status: 'pending' 
                         }]);
-                        showToast(`تم رفع ${file.name} بنجاح`, "success");
+                        showToast(`تم الرفع بنجاح`, 'success');
                     }
-                } catch (e) { showToast(`فشل رفع ${file.name}`, "error"); }
+                } catch (e) { showToast(`فشل رفع ${file.name}`, 'error'); }
             }
-            btn.classList.remove('opacity-50', 'pointer-events-none');
-            loadDrive();
-        }
-
-        // نظام الحذف
-        function confirmDelete(key) {
-            deleteTarget = key;
-            const isFolder = key.endsWith('/');
-            document.getElementById('deleteMsg').innerText = isFolder ? "تنبيه: سيتم حذف المجلد وكل محتوياته!" : "سيتم حذف هذا الملف نهائياً.";
-            document.getElementById('confirmModal').classList.remove('hidden');
-        }
-
-        async function executeDelete() {
-            if (!deleteTarget) return;
-            const btn = document.getElementById('finalDeleteBtn');
-            btn.disabled = true;
-            btn.innerText = "جاري الحذف...";
-
-            try {
-                await fetch(`${CONFIG.WORKER}?key=${encodeURIComponent(deleteTarget)}`, { method: 'DELETE' });
-                const isFolder = deleteTarget.endsWith('/');
-                let query = supa.from('resources').delete();
-                isFolder ? query.like('storage_key', `${deleteTarget}%`) : query.eq('storage_key', deleteTarget);
-                await query;
-
-                showToast("تم الحذف بنجاح", "success");
-                loadDrive();
-                closeConfirm();
-                closePreview();
-            } catch (e) { showToast("فشل الحذف", "error"); }
-            finally { btn.disabled = false; btn.innerText = "حذف"; }
-        }
-        document.getElementById('finalDeleteBtn').onclick = executeDelete;
-
-        // معاينة الملفات
-        async function openPreview(file) {
-            const panel = document.getElementById('previewPanel');
-            const content = document.getElementById('previewContent');
-            content.innerHTML = '<div class="h-40 loading-shimmer rounded-3xl"></div>';
-            panel.classList.remove('panel-hidden');
-
-            const { data } = await supa.from('resources').select('*').eq('storage_key', file.key).single();
-            const url = `${CONFIG.WORKER}?file=${encodeURIComponent(file.key)}`;
-
-            content.innerHTML = `
-                <div class="p-8 bg-white/5 rounded-[2.5rem] text-center border border-white/5">
-                    <div class="text-5xl mb-4">📄</div>
-                    <h3 class="font-bold mb-2 break-all">${file.key.split('/').pop()}</h3>
-                    ${data ? `<span class="status-badge ${data.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${data.status}</span>` : ''}
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="p-4 bg-white/5 rounded-2xl text-center"><p class="text-[10px] text-slate-500 uppercase">الحجم</p><p class="text-xs font-bold">${formatSize(file.size)}</p></div>
-                    <div class="p-4 bg-white/5 rounded-2xl text-center"><p class="text-[10px] text-slate-500 uppercase">التاريخ</p><p class="text-xs font-bold">${data ? new Date(data.created_at).toLocaleDateString() : '-'}</p></div>
-                </div>
-                <div class="flex gap-3">
-                    <a href="${url}" download class="flex-1 py-4 bg-indigo-600 rounded-2xl text-center text-xs font-black">تحميل</a>
-                    <button onclick="navigator.clipboard.writeText('${url}'); showToast('تم نسخ الرابط','success')" class="p-4 bg-white/5 rounded-2xl"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></button>
-                </div>`;
-        }
-
-        // وظائف مساعدة
-        async function createNewFolder() {
-            const name = prompt("اسم المجلد الجديد:");
-            if (!name) return;
-            const fullPath = currentPrefix + name.trim() + "/";
-            await fetch(CONFIG.WORKER, { method: 'PUT', headers: { 'file-name': encodeURIComponent(fullPath), 'Content-Type': 'application/x-directory' }, body: "" });
             loadDrive();
         }
 
         function navigateTo(path) { currentPrefix = path; loadDrive(); closePreview(); }
-        function closePreview() { document.getElementById('previewPanel').classList.add('panel-hidden'); }
+        function closePreview() { document.getElementById('previewPanel').classList.remove('active'); }
         function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); }
         function triggerUpload() { document.getElementById('fileUpload').click(); }
+        function copyLink(url) { navigator.clipboard.writeText(url); showToast("تم نسخ الرابط", "success"); }
         function formatSize(b) { if (!b) return '0 B'; const i = Math.floor(Math.log(b) / Math.log(1024)); return (b / Math.pow(1024, i)).toFixed(1) + ' ' + ['B', 'KB', 'MB', 'GB'][i]; }
-        
+
         function updateBreadcrumbs() {
             const bc = document.getElementById('breadcrumb');
-            bc.innerHTML = `<button onclick="navigateTo('')" class="hover:text-indigo-400">الرئيسية</button>`;
-            let current = "";
-            currentPrefix.split('/').filter(p => p).forEach(p => {
-                current += p + "/";
-                bc.innerHTML += `<span class="opacity-30">/</span><button onclick="navigateTo('${current}')" class="hover:text-indigo-400">${p}</button>`;
+            bc.innerHTML = `<span class="px-2 py-1 bg-white/5 rounded-lg cursor-pointer" onclick="navigateTo('')">السحابة</span>`;
+            let acc = "";
+            currentPrefix.split('/').filter(Boolean).forEach(p => {
+                acc += p + "/";
+                bc.innerHTML += `<span class="text-slate-700">/</span><span class="px-2 py-1 bg-white/5 rounded-lg cursor-pointer" onclick="navigateTo('${acc}')">${p}</span>`;
             });
+            bc.scrollLeft = bc.scrollWidth;
         }
 
-        function renderSkeletons() {
-            document.getElementById('driveGrid').innerHTML = Array(10).fill('<div class="h-44 rounded-[2.5rem] loading-shimmer opacity-20"></div>').join('');
+        async function createNewFolder() {
+            const name = prompt("اسم المجلد الجديد:");
+            if (!name) return;
+            const path = currentPrefix + name.trim() + "/";
+            await fetch(CONFIG.WORKER, { method: 'PUT', headers: { 'file-name': encodeURIComponent(path), 'Content-Type': 'application/x-directory' }, body: "" });
+            loadDrive();
+        }
+
+        function handleSearch() {
+            const q = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = {
+                folders: allItems.folders.filter(f => f.toLowerCase().includes(q)),
+                files: allItems.files.filter(f => f.key.toLowerCase().includes(q))
+            };
+            renderItems(filtered);
         }
 
         loadDrive();
