@@ -49,74 +49,79 @@ const noteValue = noteInput ? noteInput.value.trim() : "";
     });
 
     if (fileInput) {
-        fileInput.addEventListener("change", async () => {
-            const files = Array.from(fileInput.files);
-            const subject = subjectInput?.value.trim();
+    fileInput.addEventListener("change", async () => {
+        const files = Array.from(fileInput.files);
+        const subject = subjectInput?.value.trim();
+        
+        // --- الخطوة المفقودة: تعريف المتغير وجلب القيمة من الحقل ---
+        const noteField = document.getElementById("noteInput");
+        const noteValue = noteField ? noteField.value.trim() : ""; 
 
-            if (!subject) {
-                alert("⚠️ فضلاً اكتب اسم المادة أولاً.");
-                fileInput.value = ""; 
-                subjectInput.focus();
-                return;
-            }
+        if (!subject) {
+            alert("⚠️ فضلاً اكتب اسم المادة أولاً.");
+            fileInput.value = ""; 
+            subjectInput.focus();
+            return;
+        }
 
-            if (files.length === 0) return;
+        if (files.length === 0) return;
 
-            document.getElementById("dropZone")?.classList.add("hidden");
-            progressContainer?.classList.remove("hidden");
+        document.getElementById("dropZone")?.classList.add("hidden");
+        progressContainer?.classList.remove("hidden");
 
-            const totalSize = files.reduce((acc, f) => acc + f.size, 0);
-            let uploadedSoFar = 0;
+        const totalSize = files.reduce((acc, f) => acc + f.size, 0);
+        let uploadedSoFar = 0;
 
-            const tasks = files.map(async (file) => {
-                try {
-                    // استخراج الامتداد وتنظيف الاسم (دعم العربية)
-                    const fileExt = file.name.split('.').pop();
-                    const safeName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-                    const path = `pending/${safeName}`;
-
-                    // 1. رفع الملف إلى Storage
-                    const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
-                    if (upErr) throw new Error(`Storage: ${upErr.message}`);
-
-                    // 2. الحصول على الرابط
-                    const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
-
-                    // 3. التسجيل في الجدول (Database)
-                    const { error: insErr } = await supa.from("resources").insert([{
-    subject: subject,
-    file_url: pub.publicUrl,
-    file_path: path,
-    file_type: fileExt,
-    status: "pending",
-    note: noteValue // <--- هذا هو السطر الناقص!
-}]);
-                    
-                    if (insErr) throw new Error(`Database: ${insErr.message}`);
-
-                    uploadedSoFar += file.size;
-                    const percent = Math.round((uploadedSoFar / totalSize) * 100);
-                    document.getElementById("progressBar").style.width = `${percent}%`;
-                    document.getElementById("progressPercent").textContent = `${percent}%`;
-
-                } catch (err) {
-                    console.error("Critical Error:", err.message);
-                    throw err; 
-                }
-            });
-
+        const tasks = files.map(async (file) => {
             try {
-                await Promise.all(tasks);
-                setTimeout(() => {
-                    document.getElementById("formContent").classList.add("hidden");
-                    document.getElementById("successUi").classList.remove("hidden");
-                }, 500);
+                const fileExt = file.name.split('.').pop();
+                const safeName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+                const path = `pending/${safeName}`;
+
+                // 1. رفع الملف
+                const { error: upErr } = await supa.storage.from(BUCKET).upload(path, file);
+                if (upErr) throw new Error(`Storage: ${upErr.message}`);
+
+                // 2. الرابط
+                const { data: pub } = supa.storage.from(BUCKET).getPublicUrl(path);
+
+                // 3. الإضافة للجدول (الآن noteValue معرفة وستعمل)
+                const { error: insErr } = await supa.from("resources").insert([{
+                    subject: subject,
+                    file_url: pub.publicUrl,
+                    file_path: path,
+                    file_type: fileExt,
+                    status: "pending",
+                    note: noteValue // تم الربط بنجاح
+                }]);
+                
+                if (insErr) throw new Error(`Database: ${insErr.message}`);
+
+                uploadedSoFar += file.size;
+                const percent = Math.round((uploadedSoFar / totalSize) * 100);
+                document.getElementById("progressBar").style.width = `${percent}%`;
+                document.getElementById("progressPercent").textContent = `${percent}%`;
+
             } catch (err) {
-                // عرض الخطأ الحقيقي في التنبيه للمساعدة في التشخيص
-                alert(`حدث خطأ: ${err.message}`);
-                location.reload();
+                console.error("Critical Error:", err.message);
+                throw err; 
             }
         });
-    }
+
+        try {
+            await Promise.all(tasks);
+            setTimeout(() => {
+                document.getElementById("formContent").classList.add("hidden");
+                document.getElementById("successUi").classList.remove("hidden");
+                // تفريغ الحقول بعد النجاح
+                if (noteField) noteField.value = "";
+                if (subjectInput) subjectInput.value = "";
+            }, 500);
+        } catch (err) {
+            alert(`حدث خطأ: ${err.message}`);
+            location.reload();
+        }
+    });
+}
     
 });
