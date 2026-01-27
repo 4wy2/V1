@@ -3,70 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EE DRIVE PRO | النسخة الاحترافية</title>
+    <title>EE DRIVE PRO | النظام المتكامل</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <style>
-        :root { --accent: #6366f1; --glass: rgba(15, 23, 42, 0.8); }
+        :root { --accent: #6366f1; --glass: rgba(15, 23, 42, 0.85); }
         body { font-family: 'Cairo', sans-serif; background: #020617; color: #f8fafc; overflow-x: hidden; }
         .ultra-glass { background: var(--glass); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        
-        /* Side Panel Animation */
         #previewPanel { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); z-index: 100; }
         .panel-hidden { transform: translateX(100%); }
-        
-        /* Skeleton Animation */
-        .skeleton { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 200% 100%; animation: loading 1.5s infinite; }
-        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-
         .item-card { transition: all 0.3s ease; border: 1px solid rgba(255, 255, 255, 0.05); }
         .item-card:hover { transform: translateY(-5px); border-color: var(--accent); background: rgba(99, 102, 241, 0.05); }
-        
-        /* Toast Styles */
-        #toastContainer { position: fixed; bottom: 2rem; left: 2rem; z-index: 1000; display: flex; flex-direction: column; gap: 0.5rem; }
+        #toastContainer { position: fixed; bottom: 2rem; left: 2rem; z-index: 1000; display: flex; flex-direction: column; gap: 0.6rem; }
+        .animate-in { animation: slideIn 0.3s ease forwards; }
+        @keyframes slideIn { from { transform: translateX(-100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .status-badge { padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: bold; }
+        .loading-shimmer { background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
 </head>
 <body class="bg-[#020617]">
 
     <div id="toastContainer"></div>
 
-    <div id="confirmModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm">
-        <div class="ultra-glass p-8 rounded-[2rem] max-w-sm w-full border-red-500/20 text-center">
-            <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+    <div id="confirmModal" class="hidden fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md">
+        <div class="ultra-glass p-8 rounded-[2.5rem] max-w-sm w-[90%] border-red-500/20 text-center">
+            <div class="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
             </div>
-            <h3 class="text-xl font-bold mb-2">تأكيد الحذف</h3>
-            <p class="text-slate-400 text-sm mb-6">هل أنت متأكد؟ لا يمكن التراجع عن هذه العملية.</p>
-            <div class="flex gap-3">
-                <button onclick="closeConfirm()" class="flex-1 py-3 rounded-xl bg-white/5 hover:bg-white/10 transition-all">إلغاء</button>
-                <button id="finalDeleteBtn" class="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-500 transition-all font-bold">حذف نهائي</button>
+            <h3 class="text-xl font-bold mb-2">هل أنت متأكد؟</h3>
+            <p id="deleteMsg" class="text-slate-400 text-sm mb-8">سيتم حذف هذا العنصر نهائياً.</p>
+            <div class="flex gap-4">
+                <button onclick="closeConfirm()" class="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 transition-all">إلغاء</button>
+                <button id="finalDeleteBtn" class="flex-1 py-3 rounded-2xl bg-red-600 hover:bg-red-500 transition-all font-bold">حذف</button>
             </div>
         </div>
     </div>
 
-    <div id="previewPanel" class="fixed top-0 right-0 h-full w-full md:w-[450px] ultra-glass border-l border-white/10 panel-hidden p-6 overflow-y-auto">
+    <div id="previewPanel" class="fixed top-0 right-0 h-full w-full md:w-[450px] ultra-glass border-l border-white/10 panel-hidden p-8 overflow-y-auto">
         <div class="flex justify-between items-center mb-8">
-            <h2 class="text-xl font-black">معاينة الملف</h2>
-            <button onclick="closePreview()" class="p-2 hover:bg-white/10 rounded-full transition-all">
+            <h2 class="text-2xl font-black text-indigo-400">بيانات الملف</h2>
+            <button onclick="closePreview()" class="p-2 hover:bg-white/10 rounded-full">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
-        <div id="previewContent" class="space-y-6">
-            </div>
+        <div id="previewContent" class="space-y-6"></div>
     </div>
 
     <nav class="fixed top-0 w-full z-50 ultra-glass px-6 py-4 flex justify-between items-center">
-        <div class="flex items-center gap-4">
-            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-xl">EE</div>
-            <div id="breadcrumb" class="flex items-center gap-2 text-xs font-bold text-slate-400 overflow-x-auto whitespace-nowrap">
-                </div>
+        <div class="flex items-center gap-4 overflow-hidden">
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center font-black text-xl shadow-lg shadow-indigo-500/20 cursor-pointer" onclick="navigateTo('')">EE</div>
+            <div id="breadcrumb" class="flex items-center gap-2 text-xs font-bold text-slate-400 overflow-x-auto whitespace-nowrap"></div>
         </div>
-        <div class="flex items-center gap-2">
-            <button onclick="createNewFolder()" class="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-            </button>
-            <button onclick="triggerUpload()" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2">
+        <div class="flex items-center gap-3">
+            <a href="admin.html" class="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-[11px] font-bold transition-all">لوحة الإدارة</a>
+            <button onclick="createNewFolder()" class="p-3 rounded-xl bg-white/5 hover:bg-indigo-500/20 border border-white/10 text-indigo-400 transition-all"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></button>
+            <button id="uploadBtn" onclick="triggerUpload()" class="bg-indigo-600 hover:bg-indigo-500 px-5 py-3 rounded-xl text-xs font-black flex items-center gap-2 shadow-lg shadow-indigo-600/20 transition-all">
                 <span>رفع ملفات</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
             </button>
@@ -75,263 +68,216 @@
     </nav>
 
     <main class="max-w-7xl mx-auto pt-32 px-6 pb-20">
-        <div class="relative mb-10">
-            <input type="text" id="searchInput" oninput="handleSearch()" placeholder="بحث سريع في هذا المجلد..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-12 py-4 text-sm focus:border-indigo-500 outline-none transition-all">
-            <svg class="absolute right-4 top-4 w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        <div class="relative mb-10 group">
+            <input type="text" id="searchInput" oninput="handleSearch()" placeholder="ابحث في ملفاتك..." class="w-full bg-white/5 border border-white/10 rounded-2xl px-14 py-4 text-sm focus:border-indigo-500 outline-none transition-all">
+            <svg class="absolute right-5 top-4.5 w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
         </div>
 
-        <div id="driveGrid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            </div>
+        <div id="driveGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6"></div>
 
-        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-40 opacity-20">
+        <div id="emptyState" class="hidden flex flex-col items-center justify-center py-40 opacity-30">
             <svg class="w-20 h-20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-            <p class="text-xl font-medium">المجلد فارغ تماماً</p>
+            <p class="text-xl font-medium">المجلد فارغ</p>
         </div>
     </main>
 
     <script>
-        // Configuration
-        const WORKER_URL = "https://icy-sea-9acd.mohammed-rasasi.workers.dev";
+        const CONFIG = {
+            WORKER: "https://icy-sea-9acd.mohammed-rasasi.workers.dev",
+            SUPA_URL: "https://zakzkcxyxntvlsvywmii.supabase.co",
+            SUPA_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY"
+        };
+
+        const supa = supabase.createClient(CONFIG.SUPA_URL, CONFIG.SUPA_KEY);
         let currentPrefix = "";
         let allItems = { folders: [], files: [] };
+        let deleteTarget = null;
 
-        // --- UI Utils ---
-
+        // إشعارات احترافية
         function showToast(msg, type = 'info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            const colors = {
-                success: 'bg-green-500/10 text-green-500 border-green-500/20',
-                error: 'bg-red-500/10 text-red-500 border-red-500/20',
-                info: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'
+            const themes = {
+                success: 'bg-green-500/20 text-green-400 border-green-500/30',
+                error: 'bg-red-500/20 text-red-400 border-red-500/30',
+                info: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30'
             };
-            toast.className = `p-4 rounded-2xl border backdrop-blur-md shadow-2xl animate-bounce-in min-w-[250px] ${colors[type]}`;
+            toast.className = `p-4 rounded-2xl border backdrop-blur-md shadow-xl animate-in min-w-[280px] font-bold text-sm ${themes[type]}`;
             toast.innerText = msg;
             container.appendChild(toast);
-            setTimeout(() => toast.remove(), 4000);
+            setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
-        function showSkeletons() {
-            const grid = document.getElementById('driveGrid');
-            grid.innerHTML = '';
-            for(let i=0; i<10; i++) {
-                grid.innerHTML += `
-                    <div class="p-6 rounded-[2rem] bg-white/5 border border-white/5 space-y-4">
-                        <div class="w-14 h-14 rounded-2xl skeleton"></div>
-                        <div class="h-4 w-3/4 skeleton rounded"></div>
-                        <div class="h-3 w-1/2 skeleton rounded opacity-50"></div>
-                    </div>
-                `;
-            }
-        }
-
-        // --- Preview Logic ---
-
-        function openPreview(file) {
-            const panel = document.getElementById('previewPanel');
-            const content = document.getElementById('previewContent');
-            const name = file.key.split('/').pop();
-            const ext = name.split('.').pop().toLowerCase();
-            const url = `${WORKER_URL}?file=${encodeURIComponent(file.key)}`;
-
-            let mediaHtml = '';
-            if(['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-                mediaHtml = `<img src="${url}" class="w-full rounded-2xl shadow-2xl border border-white/10">`;
-            } else if(['mp4', 'webm'].includes(ext)) {
-                mediaHtml = `<video src="${url}" controls class="w-full rounded-2xl"></video>`;
-            } else if(ext === 'pdf') {
-                mediaHtml = `<iframe src="${url}" class="w-full h-[400px] rounded-2xl"></iframe>`;
-            } else {
-                mediaHtml = `<div class="p-12 bg-white/5 rounded-2xl text-center flex flex-col items-center">
-                    <svg class="w-16 h-16 text-slate-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    <p class="text-xs text-slate-400">لا تتوفر معاينة لهذا النوع</p>
-                </div>`;
-            }
-
-            content.innerHTML = `
-                ${mediaHtml}
-                <div class="bg-white/5 p-6 rounded-[2rem] space-y-4 border border-white/5">
-                    <h3 class="font-bold text-lg break-all">${name}</h3>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="p-4 bg-black/20 rounded-2xl">
-                            <p class="text-[10px] text-slate-500 uppercase">الحجم</p>
-                            <p class="text-sm font-bold">${formatSize(file.size || 0)}</p>
-                        </div>
-                        <div class="p-4 bg-black/20 rounded-2xl">
-                            <p class="text-[10px] text-slate-500 uppercase">النوع</p>
-                            <p class="text-sm font-bold uppercase">${ext}</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-2 pt-4">
-                        <a href="${url}" download class="flex-1 py-3 bg-indigo-600 rounded-xl text-center text-xs font-black">تحميل</a>
-                        <button onclick="copyLink('${url}')" class="flex-1 py-3 bg-white/5 rounded-xl text-xs font-bold">نسخ الرابط</button>
-                    </div>
-                </div>
-            `;
-            panel.classList.remove('panel-hidden');
-        }
-
-        function closePreview() { document.getElementById('previewPanel').classList.add('panel-hidden'); }
-
-        // --- Data Fetching ---
-
+        // جلب البيانات
         async function loadDrive() {
-            showSkeletons();
+            renderSkeletons();
             try {
-                const response = await fetch(`${WORKER_URL}?prefix=${encodeURIComponent(currentPrefix)}`);
+                const response = await fetch(`${CONFIG.WORKER}?prefix=${encodeURIComponent(currentPrefix)}`);
                 allItems = await response.json();
                 renderItems(allItems);
                 updateBreadcrumbs();
-            } catch (e) {
-                showToast("خطأ في الاتصال بالسيرفر", "error");
-            }
+            } catch (e) { showToast("خطأ في جلب البيانات", "error"); }
         }
 
+        // عرض العناصر
         function renderItems(data) {
             const grid = document.getElementById('driveGrid');
             grid.innerHTML = '';
-
-            // Folders
-            data.folders.forEach(path => {
-                const name = path.replace(currentPrefix, "").replace("/", "");
-                grid.appendChild(createFolderCard(name, path));
-            });
-
-            // Files
-            data.files.forEach(file => {
-                const name = file.key.replace(currentPrefix, "");
-                if(!name) return;
-                grid.appendChild(createFileCard(name, file));
-            });
-
+            data.folders.forEach(path => grid.appendChild(createCard(path, true)));
+            data.files.forEach(file => grid.appendChild(createCard(file.key, false, file)));
             document.getElementById('emptyState').classList.toggle('hidden', grid.children.length > 0);
         }
 
-        function createFolderCard(name, path) {
-            const card = document.createElement('div');
-            card.className = 'item-card p-6 rounded-[2.5rem] bg-white/5 cursor-pointer relative group';
-            card.onclick = (e) => { if(e.target.tagName !== 'BUTTON' && !e.target.closest('button')) navigateTo(path); };
-            card.innerHTML = `
-                <div class="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                    <svg class="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
-                </div>
-                <h3 class="text-sm font-bold truncate text-slate-200">${name}</h3>
-                <button onclick="confirmDelete('${path}', true)" class="absolute top-4 left-4 p-2 bg-red-500/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                </button>
-            `;
-            return card;
-        }
+        // إنشاء بطاقة عنصر
+        function createCard(path, isFolder, file = null) {
+            const name = path.replace(currentPrefix, "").replace("/", "");
+            if (!name && !isFolder) return document.createElement('div');
 
-        function createFileCard(name, file) {
-            const card = document.createElement('div');
-            card.className = 'item-card p-6 rounded-[2.5rem] bg-white/5 cursor-pointer relative group';
-            card.onclick = (e) => { if(e.target.tagName !== 'BUTTON' && !e.target.closest('button')) openPreview(file); };
+            const div = document.createElement('div');
+            div.className = 'item-card p-6 rounded-[2.5rem] bg-white/5 cursor-pointer relative group animate-in';
             
-            const ext = name.split('.').pop().toUpperCase();
-            card.innerHTML = `
-                <div class="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 text-[10px] font-black text-indigo-300">
-                    ${ext}
-                </div>
-                <h3 class="text-sm font-bold truncate text-slate-200">${name}</h3>
-                <p class="text-[10px] text-slate-500 mt-1">${formatSize(file.size || 0)}</p>
-                <button onclick="confirmDelete('${file.key}', false)" class="absolute top-4 left-4 p-2 bg-red-500/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                </button>
-            `;
-            return card;
-        }
-
-        // --- Actions ---
-
-        function triggerUpload() { document.getElementById('fileUpload').click(); }
-
-        async function handleUpload(files) {
-            if(!files.length) return;
-            showToast(`جاري رفع ${files.length} ملفات...`, 'info');
-            
-            for(let file of files) {
-                const fileName = currentPrefix + file.name;
-                try {
-                    await fetch(WORKER_URL, {
-                        method: 'PUT',
-                        headers: { 'file-name': encodeURIComponent(fileName), 'Content-Type': file.type },
-                        body: file
-                    });
-                } catch (e) {
-                    showToast(`فشل رفع ${file.name}`, 'error');
-                }
+            if (isFolder) {
+                div.onclick = (e) => { if(!e.target.closest('button')) navigateTo(path); };
+                div.innerHTML = `<div class="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center mb-4"><svg class="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg></div>
+                                 <h3 class="text-sm font-bold truncate">${name}</h3>`;
+            } else {
+                div.onclick = (e) => { if(!e.target.closest('button')) openPreview(file); };
+                div.innerHTML = `<div class="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center mb-4 text-[10px] font-black text-indigo-300">${name.split('.').pop().toUpperCase()}</div>
+                                 <h3 class="text-sm font-bold truncate">${name}</h3>
+                                 <p class="text-[10px] text-slate-500 mt-1">${formatSize(file.size)}</p>`;
             }
-            showToast("تم الرفع بنجاح ✅", 'success');
+
+            const delBtn = document.createElement('button');
+            delBtn.className = "absolute top-4 left-4 p-2.5 bg-red-500/10 text-red-500 rounded-xl opacity-0 group-hover:opacity-100 hover:bg-red-500 hover:text-white transition-all";
+            delBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>`;
+            delBtn.onclick = (e) => { e.stopPropagation(); confirmDelete(path); };
+            div.appendChild(delBtn);
+            return div;
+        }
+
+        // نظام البحث اللحظي
+        function handleSearch() {
+            const term = document.getElementById('searchInput').value.toLowerCase();
+            const filteredFolders = allItems.folders.filter(f => f.toLowerCase().includes(term));
+            const filteredFiles = allItems.files.filter(f => f.key.toLowerCase().includes(term));
+            renderItems({ folders: filteredFolders, files: filteredFiles });
+        }
+
+        // نظام الرفع المطور
+        async function handleUpload(files) {
+            const btn = document.getElementById('uploadBtn');
+            btn.classList.add('opacity-50', 'pointer-events-none');
+            
+            for (let file of files) {
+                const fullPath = currentPrefix + file.name;
+                showToast(`جاري رفع ${file.name}...`);
+                try {
+                    const res = await fetch(CONFIG.WORKER, { 
+                        method: 'PUT', 
+                        headers: { 'file-name': encodeURIComponent(fullPath), 'Content-Type': file.type }, 
+                        body: file 
+                    });
+                    
+                    if(res.ok) {
+                        await supa.from('resources').insert([{ 
+                            subject: file.name, 
+                            storage_key: fullPath, 
+                            file_url: `${CONFIG.WORKER}?file=${encodeURIComponent(fullPath)}`, 
+                            file_type: file.name.split('.').pop(), 
+                            size: file.size, 
+                            status: 'pending' 
+                        }]);
+                        showToast(`تم رفع ${file.name} بنجاح`, "success");
+                    }
+                } catch (e) { showToast(`فشل رفع ${file.name}`, "error"); }
+            }
+            btn.classList.remove('opacity-50', 'pointer-events-none');
             loadDrive();
         }
 
-        let deleteTarget = null;
-        function confirmDelete(key, isFolder) {
+        // نظام الحذف
+        function confirmDelete(key) {
             deleteTarget = key;
+            const isFolder = key.endsWith('/');
+            document.getElementById('deleteMsg').innerText = isFolder ? "تنبيه: سيتم حذف المجلد وكل محتوياته!" : "سيتم حذف هذا الملف نهائياً.";
             document.getElementById('confirmModal').classList.remove('hidden');
-            document.getElementById('finalDeleteBtn').onclick = executeDelete;
         }
 
-        function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); }
-
         async function executeDelete() {
-            closeConfirm();
-            showToast("جاري الحذف...", 'info');
+            if (!deleteTarget) return;
+            const btn = document.getElementById('finalDeleteBtn');
+            btn.disabled = true;
+            btn.innerText = "جاري الحذف...";
+
             try {
-                await fetch(`${WORKER_URL}?key=${encodeURIComponent(deleteTarget)}`, { method: 'DELETE' });
-                showToast("تم الحذف بنجاح", 'success');
+                await fetch(`${CONFIG.WORKER}?key=${encodeURIComponent(deleteTarget)}`, { method: 'DELETE' });
+                const isFolder = deleteTarget.endsWith('/');
+                let query = supa.from('resources').delete();
+                isFolder ? query.like('storage_key', `${deleteTarget}%`) : query.eq('storage_key', deleteTarget);
+                await query;
+
+                showToast("تم الحذف بنجاح", "success");
                 loadDrive();
-            } catch (e) {
-                showToast("فشل الحذف", 'error');
-            }
+                closeConfirm();
+                closePreview();
+            } catch (e) { showToast("فشل الحذف", "error"); }
+            finally { btn.disabled = false; btn.innerText = "حذف"; }
+        }
+        document.getElementById('finalDeleteBtn').onclick = executeDelete;
+
+        // معاينة الملفات
+        async function openPreview(file) {
+            const panel = document.getElementById('previewPanel');
+            const content = document.getElementById('previewContent');
+            content.innerHTML = '<div class="h-40 loading-shimmer rounded-3xl"></div>';
+            panel.classList.remove('panel-hidden');
+
+            const { data } = await supa.from('resources').select('*').eq('storage_key', file.key).single();
+            const url = `${CONFIG.WORKER}?file=${encodeURIComponent(file.key)}`;
+
+            content.innerHTML = `
+                <div class="p-8 bg-white/5 rounded-[2.5rem] text-center border border-white/5">
+                    <div class="text-5xl mb-4">📄</div>
+                    <h3 class="font-bold mb-2 break-all">${file.key.split('/').pop()}</h3>
+                    ${data ? `<span class="status-badge ${data.status === 'approved' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${data.status}</span>` : ''}
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-4 bg-white/5 rounded-2xl text-center"><p class="text-[10px] text-slate-500 uppercase">الحجم</p><p class="text-xs font-bold">${formatSize(file.size)}</p></div>
+                    <div class="p-4 bg-white/5 rounded-2xl text-center"><p class="text-[10px] text-slate-500 uppercase">التاريخ</p><p class="text-xs font-bold">${data ? new Date(data.created_at).toLocaleDateString() : '-'}</p></div>
+                </div>
+                <div class="flex gap-3">
+                    <a href="${url}" download class="flex-1 py-4 bg-indigo-600 rounded-2xl text-center text-xs font-black">تحميل</a>
+                    <button onclick="navigator.clipboard.writeText('${url}'); showToast('تم نسخ الرابط','success')" class="p-4 bg-white/5 rounded-2xl"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/></svg></button>
+                </div>`;
+        }
+
+        // وظائف مساعدة
+        async function createNewFolder() {
+            const name = prompt("اسم المجلد الجديد:");
+            if (!name) return;
+            const fullPath = currentPrefix + name.trim() + "/";
+            await fetch(CONFIG.WORKER, { method: 'PUT', headers: { 'file-name': encodeURIComponent(fullPath), 'Content-Type': 'application/x-directory' }, body: "" });
+            loadDrive();
         }
 
         function navigateTo(path) { currentPrefix = path; loadDrive(); closePreview(); }
-
+        function closePreview() { document.getElementById('previewPanel').classList.add('panel-hidden'); }
+        function closeConfirm() { document.getElementById('confirmModal').classList.add('hidden'); }
+        function triggerUpload() { document.getElementById('fileUpload').click(); }
+        function formatSize(b) { if (!b) return '0 B'; const i = Math.floor(Math.log(b) / Math.log(1024)); return (b / Math.pow(1024, i)).toFixed(1) + ' ' + ['B', 'KB', 'MB', 'GB'][i]; }
+        
         function updateBreadcrumbs() {
             const bc = document.getElementById('breadcrumb');
-            bc.innerHTML = '';
-            
-            const root = document.createElement('button');
-            root.innerText = 'الرئيسية';
-            root.onclick = () => navigateTo('');
-            bc.appendChild(root);
-
-            let pathAccum = "";
-            currentPrefix.split('/').filter(p => p).forEach(part => {
-                pathAccum += part + "/";
-                const sep = document.createElement('span');
-                sep.innerText = ' / ';
-                bc.appendChild(sep);
-                
-                const btn = document.createElement('button');
-                btn.innerText = part;
-                const target = pathAccum;
-                btn.onclick = () => navigateTo(target);
-                bc.appendChild(btn);
+            bc.innerHTML = `<button onclick="navigateTo('')" class="hover:text-indigo-400">الرئيسية</button>`;
+            let current = "";
+            currentPrefix.split('/').filter(p => p).forEach(p => {
+                current += p + "/";
+                bc.innerHTML += `<span class="opacity-30">/</span><button onclick="navigateTo('${current}')" class="hover:text-indigo-400">${p}</button>`;
             });
         }
 
-        // --- Helpers ---
-        function formatSize(bytes) {
-            if (bytes === 0) return '0 B';
-            const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'], i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-        }
-
-        function copyLink(url) {
-            navigator.clipboard.writeText(url);
-            showToast("تم نسخ الرابط!", 'success');
-        }
-
-        function handleSearch() {
-            const term = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = {
-                folders: allItems.folders.filter(p => p.toLowerCase().includes(term)),
-                files: allItems.files.filter(f => f.key.toLowerCase().includes(term))
-            };
-            renderItems(filtered);
+        function renderSkeletons() {
+            document.getElementById('driveGrid').innerHTML = Array(10).fill('<div class="h-44 rounded-[2.5rem] loading-shimmer opacity-20"></div>').join('');
         }
 
         loadDrive();
