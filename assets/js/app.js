@@ -11,6 +11,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const fileInput = document.getElementById("fileInput");
     const subjectInput = document.getElementById("subjectInput");
     const progressContainer = document.getElementById("progressContainer");
+    // 1. في بداية الدالة، اجلب قيمة الملاحظة من الحقل (تأكد أن ID الحقل في الـ HTML هو noteInput)
+const noteInput = document.getElementById("noteInput");
+const noteValue = noteInput ? noteInput.value.trim() : "";
+
+// ... (بقية الكود الخاص بالرفع) ...
+
+// 2. في جزء الـ insert، أضف عمود الـ note
+
 
     if (openBtn) {
         openBtn.addEventListener("click", () => {
@@ -76,12 +84,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // 3. التسجيل في الجدول (Database)
                     const { error: insErr } = await supa.from("resources").insert([{
-                        subject: subject,
-                        file_url: pub.publicUrl,
-                        file_path: path,
-                        file_type: fileExt,
-                        status: "pending"
-                    }]);
+    subject: subject,
+    file_url: pub.publicUrl,
+    file_path: path,
+    file_type: fileExt,
+    status: "pending",
+    note: noteValue // <--- هذا هو السطر الناقص!
+}]);
                     
                     if (insErr) throw new Error(`Database: ${insErr.message}`);
 
