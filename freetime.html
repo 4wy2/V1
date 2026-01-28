@@ -12,11 +12,30 @@
         body { font-family: 'Cairo', sans-serif; background: #0f172a; color: #f8fafc; overflow-x: hidden; }
         .bg-glow { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 50% -20%, #1e3a8a 0%, #0f172a 60%); z-index: -1; }
         
-        .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 10px 0; }
-        .grid-table { display: grid; grid-template-columns: 0.8fr repeat(5, 1fr); gap: 2px; background: rgba(255,255,255,0.05); border-radius: 24px; overflow: hidden; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); min-width: 600px; }
+        /* ضبط الحاوية لتكون ثابتة بدون سحب */
+        .table-wrapper { width: 100%; padding: 10px 0; }
+        .grid-table { 
+            display: grid; 
+            grid-template-columns: 0.8fr repeat(5, 1fr); 
+            gap: 2px; 
+            background: rgba(255,255,255,0.05); 
+            border-radius: 24px; 
+            overflow: hidden; 
+            backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255,255,255,0.1); 
+            width: 100%; /* العرض كامل الشاشة دائماً */
+        }
         
         .header-cell { background: rgba(30, 41, 59, 0.8); color: #94a3b8; padding: 14px 2px; text-align: center; font-size: 12px; font-weight: 800; }
         .time-cell { background: rgba(15, 23, 42, 0.6); font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; color: #475569; border-right: 1px solid rgba(255,255,255,0.03); }
+        
+        /* تعديل حجم الخلايا للجوال */
+        @media (max-width: 640px) {
+            .header-cell { font-size: 10px; padding: 10px 1px; }
+            .time-cell { font-size: 8px; }
+            .slot-cell { min-height: 45px !important; }
+        }
+
         .slot-cell { background: rgba(255, 255, 255, 0.01); min-height: 55px; cursor: pointer; transition: all 0.2s; position: relative; }
         .slot-cell.selected { background: var(--available); box-shadow: inset 0 0 20px rgba(0,0,0,0.2); transform: scale(0.95); border-radius: 8px; }
         .slot-cell.selected::after { content: '⚡'; display: flex; justify-content: center; align-items: center; height: 100%; font-size: 14px; }
@@ -31,7 +50,6 @@
         .fade-up { animation: fadeUp 0.6s ease-out forwards; }
         @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* حالة قفل الجدول */
         .locked { opacity: 0.2; pointer-events: none; filter: blur(4px); transition: all 0.5s; }
     </style>
 </head>
@@ -273,7 +291,7 @@
             } catch (err) {
                 showToast("خطأ في الاتصال", "❌");
                 btn.disabled = false;
-                btn.innerText = "حفظ التفرغ النهائي 🚀";
+                btn.innerText = "حفظ وقت فراغي النهائي 🚀";
             }
         }
     </script>
