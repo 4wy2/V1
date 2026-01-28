@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>نادي الهندسة الكهربائية | EEC Elite</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #2563eb; --available: #10b981; --accent: #3b82f6; }
+        body { font-family: 'Cairo', sans-serif; background: #0f172a; color: #f8fafc; overflow-x: hidden; }
+        .bg-glow { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle at 50% -20%, #1e3a8a 0%, #0f172a 60%); z-index: -1; }
+        
+        .table-wrapper { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; padding: 10px 0; }
+        .grid-table { display: grid; grid-template-columns: 0.8fr repeat(5, 1fr); gap: 2px; background: rgba(255,255,255,0.05); border-radius: 24px; overflow: hidden; backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.1); min-width: 600px; }
+        
+        .header-cell { background: rgba(30, 41, 59, 0.8); color: #94a3b8; padding: 14px 2px; text-align: center; font-size: 12px; font-weight: 800; }
+        .time-cell { background: rgba(15, 23, 42, 0.6); font-size: 10px; font-weight: 700; display: flex; align-items: center; justify-content: center; color: #475569; border-right: 1px solid rgba(255,255,255,0.03); }
+        .slot-cell { background: rgba(255, 255, 255, 0.01); min-height: 55px; cursor: pointer; transition: all 0.2s; position: relative; }
+        .slot-cell.selected { background: var(--available); box-shadow: inset 0 0 20px rgba(0,0,0,0.2); transform: scale(0.95); border-radius: 8px; }
+        .slot-cell.selected::after { content: '⚡'; display: flex; justify-content: center; align-items: center; height: 100%; font-size: 14px; }
+
+        #toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-150%); transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 1000; }
+        #toast.show { transform: translateX(-50%) translateY(0); }
+        
+        .btn-premium { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); transition: all 0.3s; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.4); }
+        .btn-premium:hover:not(:disabled) { transform: translateY(-3px); filter: brightness(1.1); }
+        .btn-premium:disabled { filter: grayscale(1); opacity: 0.5; cursor: not-allowed; }
+        
+        .fade-up { animation: fadeUp 0.6s ease-out forwards; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* حالة قفل الجدول */
+        .locked { opacity: 0.2; pointer-events: none; filter: blur(4px); transition: all 0.5s; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="bg-glow"></div>
+
+    <div id="toast" class="bg-[#1e293b]/90 backdrop-blur-xl border border-white/10 p-5 rounded-3xl flex items-center gap-4 shadow-2xl min-w-[320px]">
+        <div class="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-2xl" id="toastIcon">💡</div>
+        <div class="flex flex-col text-right">
+            <span class="text-[10px] text-blue-400 font-black uppercase tracking-widest">إشعار النظام</span>
+            <span id="toastMsg" class="font-bold text-white text-sm"></span>
+        </div>
+    </div>
+
+    <div class="max-w-3xl mx-auto space-y-8">
+        <header class="text-center py-4 fade-up">
+            <div class="flex items-center justify-center gap-4 mb-6">
+                <div class="w-20 h-20 bg-blue-600 rounded-[2rem] flex items-center justify-center shadow-2xl rotate-3 border-2 border-white/20">
+                    <span class="text-white text-2xl font-black italic">EEC</span>
+                </div>
+                <div class="text-right">
+                    <h1 class="text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-b from-white to-slate-400">نادي الهندسة الكهربائية</h1>
+                    <p class="text-blue-400 text-xs font-black uppercase tracking-[0.2em]">بوابتك للمساهمة والإبداع</p>
+                </div>
+            </div>
+
+            <div class="bg-blue-600/10 backdrop-blur-md border border-blue-500/20 p-6 rounded-[2.5rem] text-right relative overflow-hidden group">
+                <div class="absolute -left-4 -top-4 text-6xl opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-700">📅</div>
+                <h2 class="text-blue-400 font-black text-lg mb-2">متى تكون متفرغاً؟ 🗓️</h2>
+                <p class="text-slate-300 text-sm leading-relaxed font-semibold">
+                    ساعدنا في تحديد أفضل الأوقات لإقامة فعاليات النادي القادمة (دورات، ورش عمل، اجتماعات) من خلال تلوين ساعات فراغك في الجدول أدناه.
+                </p>
+            </div>
+        </header>
+
+        <section class="fade-up" style="animation-delay: 0.2s">
+            <div class="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[3rem] shadow-2xl">
+                <div class="flex justify-between items-center mb-6">
+                    <label class="text-xs font-black text-slate-500 uppercase tracking-widest">التحقق من العضوية</label>
+                    <div id="loadStatus" class="px-4 py-1.5 bg-slate-800/50 rounded-full text-[10px] font-black text-slate-400 border border-white/10 transition-all">أدخل رقمك الجامعي للبدء..</div>
+                </div>
+
+                <input type="number" id="studentID" oninput="verifyMember(this.value)" placeholder="رقمك الجامعي.." 
+                       class="w-full bg-transparent border-b-2 border-white/5 focus:border-blue-500 py-4 text-3xl text-center font-black outline-none transition-all placeholder:text-slate-700 tracking-wider text-white">
+                
+                <div id="contactSupport" class="hidden mt-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-center fade-up">
+                    <p class="text-amber-400 text-xs font-bold mb-3">بياناتك غير موجودة؟ قد لا تكون مسجلاً كعضو في نادي الهندسة الكهربائية .</p>
+                    <a href="https://wa.me/966541048510" target="_blank" class="inline-flex items-center gap-2 text-white bg-green-600 px-6 py-2 rounded-full text-[12px] font-black hover:bg-green-500 transition shadow-lg">
+                        <span>تواصل معنا لتحديث بياناتك</span>
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.246 2.248 3.484 5.232 3.484 8.412-.003 6.557-5.338 11.892-11.893 11.892-1.997-.001-3.951-.5-5.688-1.448l-6.309 1.656zm6.224-3.82s.331.196.888.528c1.484.887 3.22 1.355 4.973 1.357 5.289 0 9.591-4.301 9.594-9.591 0-2.561-1.001-4.97-2.813-6.784-1.817-1.812-4.232-2.811-6.78-2.811-5.289 0-9.591 4.301-9.594 9.591-.001 1.83.516 3.621 1.492 5.176l-.524 1.914 1.764-.46z"/></svg>
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section id="mainContent" class="space-y-6 fade-up locked" style="animation-delay: 0.3s">
+            <div class="grid grid-cols-2 gap-4 px-4">
+                <div class="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
+                    <div class="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                    <span class="text-[10px] font-bold text-slate-400">مربعات خضراء = فراغ</span>
+                </div>
+                <div class="flex items-center gap-3 bg-white/5 p-3 rounded-2xl border border-white/5">
+                    <div class="w-3 h-3 bg-slate-700 rounded-full"></div>
+                    <span class="text-[10px] font-bold text-slate-400">مربعات فارغة = محاضرة</span>
+                </div>
+            </div>
+
+            <div class="table-wrapper">
+                <div id="grid-container" class="grid-table"></div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-6">
+                <div class="flex-1 bg-emerald-500/5 border border-emerald-500/20 p-6 rounded-[2.5rem] flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-black text-emerald-500/60 uppercase block">الساعات المتاحة</span>
+                        <span id="count" class="text-4xl font-black text-emerald-500">0</span>
+                    </div>
+                    <button onclick="clearSelection()" class="text-xs font-black text-red-400 hover:text-red-300 transition">تفريغ ↺</button>
+                </div>
+
+                <button id="submitBtn" disabled onclick="submitAvailability()" class="btn-premium flex-[2] py-6 rounded-[2.5rem] font-black text-xl text-white">
+                    حفظ التفرغ النهائي 🚀
+                </button>
+            </div>
+        </section>
+
+        <footer class="text-center pb-12 opacity-30">
+            <p class="text-[10px] font-black text-slate-500 tracking-[0.5em]">ELECTRICAL ENGINEERING CLUB © 2026</p>
+        </footer>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://zakzkcxyxntvlsvywmii.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        const DAYS = ["أحد", "اثنين", "ثلاثاء", "أربعاء", "خميس"];
+        const SLOTS = ["08-09", "09-10", "10-11", "11-12", "12-01", "01-02", "02-03", "03-04", "04-05", "05-06", "06-07"];
+        let selectedSlots = new Set();
+        let isDragging = false;
+        let currentUser = null;
+
+        window.onload = () => {
+            initTable();
+            const savedID = localStorage.getItem('eec_student_id');
+            if (savedID) {
+                document.getElementById('studentID').value = savedID;
+                verifyMember(savedID);
+            }
+        };
+
+        function initTable() {
+            const container = document.getElementById("grid-container");
+            let html = `<div class="header-cell">الوقت</div>` + DAYS.map(day => `<div class="header-cell">${day}</div>`).join("");
+            SLOTS.forEach((time, index) => {
+                html += `<div class="time-cell"><span>${time}</span></div>`;
+                for (let d = 0; d < 5; d++) {
+                    const id = `${d}_${index}`;
+                    html += `<div id="${id}" class="slot-cell" onmousedown="startDrag('${id}')" onmouseenter="doDrag('${id}')" ontouchstart="handleTouch(event)"></div>`;
+                }
+            });
+            container.innerHTML = html;
+            window.onmouseup = () => isDragging = false;
+        }
+
+        async function verifyMember(id) {
+            const statusLabel = document.getElementById('loadStatus');
+            const contactBox = document.getElementById('contactSupport');
+            
+            if (id.length < 5) {
+                statusLabel.innerText = "أدخل رقمك الجامعي للبدء..";
+                statusLabel.className = "px-4 py-1.5 bg-slate-800/50 rounded-full text-[10px] font-black text-slate-400 border border-white/10";
+                contactBox.classList.add('hidden');
+                lockUI();
+                return;
+            }
+
+            statusLabel.innerText = "جاري التحقق.. 🔍";
+
+            const { data: member, error } = await _supabase
+                .from('club_members')
+                .select('*')
+                .eq('student_id', id)
+                .maybeSingle();
+
+            if (member) {
+                currentUser = member;
+                statusLabel.innerText = `أهلاً مهندس ${member.full_name.split(' ')[0]} ✅`;
+                statusLabel.className = "px-4 py-1.5 bg-emerald-500/20 rounded-full text-[10px] font-black text-emerald-400 border border-emerald-500/20";
+                contactBox.classList.add('hidden');
+                unlockUI();
+                fetchExistingAvailability(id);
+            } else {
+                currentUser = null;
+                statusLabel.innerText = "الرقم غير مسجل ❌";
+                statusLabel.className = "px-4 py-1.5 bg-red-500/20 rounded-full text-[10px] font-black text-red-400 border border-red-500/20";
+                contactBox.classList.remove('hidden');
+                lockUI();
+            }
+        }
+
+        function lockUI() {
+            document.getElementById('mainContent').classList.add('locked');
+            document.getElementById('submitBtn').disabled = true;
+        }
+
+        function unlockUI() {
+            document.getElementById('mainContent').classList.remove('locked');
+            document.getElementById('submitBtn').disabled = false;
+        }
+
+        async function fetchExistingAvailability(id) {
+            const { data } = await _supabase.from('club_availability').select('*').eq('student_name', id).maybeSingle();
+            if (data) {
+                clearSelection();
+                data.slots_data.forEach(item => toggleSlot(`${item.day}_${item.slot}`, true));
+                showToast("تم تحميل جدولك السابق", "✅");
+            }
+        }
+
+        function toggleSlot(id, force = false) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            if (force) { if (!selectedSlots.has(id)) { selectedSlots.add(id); el.classList.add("selected"); } } 
+            else { 
+                if (selectedSlots.has(id)) { selectedSlots.delete(id); el.classList.remove("selected"); }
+                else { selectedSlots.add(id); el.classList.add("selected"); }
+            }
+            document.getElementById("count").innerText = selectedSlots.size;
+        }
+
+        function startDrag(id) { isDragging = true; toggleSlot(id); }
+        function doDrag(id) { if (isDragging) toggleSlot(id, true); }
+        function handleTouch(e) {
+            const touch = e.touches[0];
+            const el = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (el && el.classList.contains('slot-cell')) toggleSlot(el.id, true);
+        }
+
+        function clearSelection() {
+            selectedSlots.clear();
+            document.querySelectorAll(".slot-cell").forEach(el => el.classList.remove("selected"));
+            document.getElementById("count").innerText = "0";
+        }
+
+        function showToast(msg, icon = '💡') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            document.getElementById('toastIcon').innerText = icon;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        async function submitAvailability() {
+            if (!currentUser) return;
+            if (selectedSlots.size < 3) return showToast("اختر 3 ساعات على الأقل", "⚠️");
+            
+            const btn = document.getElementById("submitBtn");
+            btn.disabled = true;
+            btn.innerText = "جاري الحفظ..";
+
+            const formattedData = Array.from(selectedSlots).map(id => {
+                const [d, t] = id.split('_');
+                return { day: parseInt(d), slot: parseInt(t) };
+            });
+
+            try {
+                const { error } = await _supabase.from('club_availability').upsert([{
+                    student_name: currentUser.student_id, 
+                    student_major: currentUser.major, 
+                    slots_data: formattedData,
+                    created_at: new Date()
+                }], { onConflict: 'student_name' }); 
+
+                if (error) throw error;
+                localStorage.setItem('eec_student_id', currentUser.student_id);
+                showToast("تم الحفظ بنجاح!", "🚀");
+                setTimeout(() => location.reload(), 1500);
+            } catch (err) {
+                showToast("خطأ في الاتصال", "❌");
+                btn.disabled = false;
+                btn.innerText = "حفظ التفرغ النهائي 🚀";
+            }
+        }
+    </script>
+</body>
+</html>
