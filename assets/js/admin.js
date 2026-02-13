@@ -1,7 +1,15 @@
-// admin.js - النسخة المطورة (نظام الحذف الذكي + الأمان)
+// admin.js -
 const SUPABASE_URL = "https://zakzkcxyxntvlsvywmii.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpha3prY3h5eG50dmxzdnl3bWlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkwODY1NDIsImV4cCI6MjA4NDY2MjU0Mn0.hApvnHyFsm5SBPUWdJ0AHrjMmxYrihXhEq9P_Knp-vY";
-const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const supa = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        storage: window.localStorage,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+    }
+});
 
 let allRows = [];
 let currentFilter = "pending";
@@ -22,7 +30,32 @@ const notify = (msg, type = 'info') => {
     }, 3000);
 };
 
-// 2. الدخول والتحقق
+// 2. إصلاح الدخول للجوال (استخدام Click بدلاً من Submit التقليدي)
+const loginForm = document.getElementById("loginForm");
+if (loginForm) {
+    const loginBtn = loginForm.querySelector('button');
+    loginBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+
+        if (!email || !password) return notify("يرجى إدخال البيانات", "error");
+
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = "جاري التحقق...";
+
+        const { error } = await supa.auth.signInWithPassword({ email, password });
+        if (error) { 
+            notify("بيانات الدخول غير صحيحة", "error"); 
+            loginBtn.disabled = false; 
+            loginBtn.innerHTML = "دخول النظام"; 
+        } else { 
+            checkUser(); 
+        }
+    });
+}
+
+// 3. التحقق من صلاحية المشرف
 async function checkUser() {
     const { data: { session } } = await supa.auth.getSession();
     if (!session) {
@@ -54,7 +87,7 @@ async function checkUser() {
     loadData();
 }
 
-// 3. جلب البيانات
+// 4. جلب البيانات
 async function loadData() {
     const { data, error } = await supa.from("resources").select("*").order("id", { ascending: false });
     if (error) return notify("فشل في جلب البيانات", "error");
@@ -62,20 +95,20 @@ async function loadData() {
     render();
 }
 
-// 4. منطق الحذف (طلب حذف + حذف نهائي)
+// 5. نظام الحذف الذكي (للمشرفين والمدير)
 window.requestDelete = async (id) => {
-    if (!confirm("هل أنت متأكد من رغبتك في طلب حذف هذا الملف؟ سيختفي من عندك ويرسل للمدير.")) return;
+    if (!confirm("هل أنت متأكد؟ سيختفي الملف ويرسل للمدير للتأكيد.")) return;
     const { error } = await supa.from("resources").update({ status: 'delete_requested' }).eq("id", id);
-    if (!error) { notify("تم إرسال طلب الحذف", "info"); loadData(); }
+    if (!error) { notify("تم طلب حذف الملف", "info"); loadData(); }
 };
 
 window.confirmFinalDelete = async (id) => {
-    if (!confirm("⚠️ تحذير: سيتم حذف السجل نهائياً من السيرفر. هل أنت متأكد؟")) return;
+    if (!confirm("⚠️ سيتم مسح الملف نهائياً من السيرفر!")) return;
     const { error } = await supa.from("resources").delete().eq("id", id);
-    if (!error) { notify("تم الحذف النهائي بنجاح", "success"); loadData(); }
+    if (!error) { notify("تم الحذف النهائي", "success"); loadData(); }
 };
 
-// 5. التحديث العام
+// 6. التحديثات العامة
 window.updateRowStatus = async (id, type) => {
     let updates = {};
     if (type === 'claim') updates = { status: 'reviewing', processed_by_user_id: currentUser.id, processed_by_name: currentUser.name };
@@ -88,17 +121,14 @@ window.updateRowStatus = async (id, type) => {
 
 window.updateNote = async (id, note) => { await supa.from("resources").update({ admin_note: note }).eq("id", id); };
 
-// 6. الرندرة والتنسيق المتجاوب
+// 7. الرندرة المتجاوبة (إصلاح العرض للجوال)
 function render() {
     const search = (document.getElementById("searchBox")?.value || "").toLowerCase();
     
-    // الفلترة الذكية: إخفاء طلبات الحذف عن المراجعين إلا لو كان المراجع هو المدير وفي فلتر خاص
     const filtered = allRows.filter(r => {
         const matchesSearch = (r.subject || "").toLowerCase().includes(search) || (r.uploader_name || "").toLowerCase().includes(search);
-        
-        // إذا كان الملف مطلوب حذفه: لا يظهر للمراجعين أبداً. يظهر فقط للمدير إذا اختار "المعلق" أو إذا أردت إضافة زر فلتر "طلبات الحذف"
+        // إخفاء طلبات الحذف عن المراجعين العاديين
         if (r.status === 'delete_requested' && !currentUser.isSuper) return false;
-        
         return (currentFilter === "all" || r.status === currentFilter) && matchesSearch;
     });
     
@@ -109,38 +139,37 @@ function render() {
         const rId = `'${row.id}'`;
         const typeStyle = { pdf: 'bg-rose-500/10 text-rose-500 border-rose-500/20', png: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' }[row.file_type?.toLowerCase()] || 'bg-slate-500/10 text-slate-400 border-slate-500/20';
 
-        // بناء الأزرار
-        let btns = `<a href="${row.file_url}" target="_blank" class="bg-blue-600 hover:bg-blue-500 text-white px-5 py-3 rounded-xl text-[10px] font-black transition-all">فتح</a>`;
+        let btns = `<a href="${row.file_url}" target="_blank" class="bg-blue-600 text-white px-5 py-3 rounded-xl text-[10px] font-black">فتح</a>`;
         
         if (row.status === 'delete_requested' && currentUser.isSuper) {
             btns = `
-                <button onclick="confirmFinalDelete(${rId})" class="bg-rose-600 hover:bg-rose-500 text-white px-5 py-3 rounded-xl text-[10px] font-black animate-pulse">تأكيد الحذف النهائي 🔥</button>
+                <button onclick="confirmFinalDelete(${rId})" class="bg-rose-600 text-white px-4 py-3 rounded-xl text-[10px] font-black animate-pulse">تأكيد الحذف 🔥</button>
                 <button onclick="updateRowStatus(${rId}, 'release')" class="text-slate-400 px-2 text-[10px]">تراجع</button>
             `;
         } else if (row.status === 'pending') {
-            btns += `<button onclick="updateRowStatus(${rId}, 'claim')" class="bg-white/5 hover:bg-white/10 text-white border border-white/10 px-5 py-3 rounded-xl text-[10px] font-black transition-all">حجز</button>`;
-            btns += `<button onclick="requestDelete(${rId})" class="text-rose-500 p-2 hover:bg-rose-500/10 rounded-lg">🗑️</button>`;
+            btns += `<button onclick="updateRowStatus(${rId}, 'claim')" class="bg-white/5 text-white border border-white/10 px-5 py-3 rounded-xl text-[10px] font-black">حجز</button>`;
+            btns += `<button onclick="requestDelete(${rId})" class="text-rose-500 p-2">🗑️</button>`;
         } else if (row.status === 'reviewing' && canManage) {
-            btns += `<button onclick="updateRowStatus(${rId}, 'approved')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl text-[10px] font-black shadow-lg">اعتماد ✅</button>`;
-            btns += `<button onclick="updateRowStatus(${rId}, 'release')" class="text-slate-500 hover:text-white px-2 py-2 text-[10px]">إلغاء</button>`;
+            btns += `<button onclick="updateRowStatus(${rId}, 'approved')" class="bg-emerald-600 text-white px-5 py-3 rounded-xl text-[10px] font-black">اعتماد ✅</button>`;
+            btns += `<button onclick="updateRowStatus(${rId}, 'release')" class="text-slate-500 px-2 text-[10px]">إلغاء</button>`;
         } else if (row.status === 'reviewing') {
             btns += `<span class="text-[9px] text-slate-500 italic py-2">🔒 بيد ${row.processed_by_name}</span>`;
         }
 
         const cardContent = `
-            <div class="font-black text-white text-base">${row.status === 'delete_requested' ? '⚠️ [مطلوب حذفه] ' : ''}${row.subject}</div>
-            <div class="text-[9px] text-slate-500 font-bold mt-3 uppercase tracking-wider">👤 الرافع: ${row.uploader_name || 'غير معروف'}</div>
+            <div class="font-black text-white text-base">${row.status === 'delete_requested' ? '⚠️ ' : ''}${row.subject}</div>
+            <div class="text-[9px] text-slate-500 font-bold mt-1 uppercase">👤 الرافع: ${row.uploader_name || 'غير معروف'}</div>
         `;
 
         return { 
-            desktop: `<tr class="border-b border-slate-800/30 hover:bg-white/[0.01] transition-all ${row.status === 'delete_requested' ? 'bg-rose-900/10' : ''}">
+            desktop: `<tr class="border-b border-slate-800/30 ${row.status === 'delete_requested' ? 'bg-rose-900/10' : ''}">
                 <td class="p-6">${cardContent}</td>
                 <td class="p-6 text-center"><span class="px-3 py-1 rounded-full text-[9px] font-black border uppercase ${typeStyle}">${row.file_type || 'File'}</span></td>
-                <td class="p-6"><input type="text" onblur="updateNote(${rId}, this.value)" value="${row.admin_note || ''}" placeholder="ملاحظة إدارية..." class="w-full bg-black/40 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 outline-none"></td>
+                <td class="p-6"><input type="text" onblur="updateNote(${rId}, this.value)" value="${row.admin_note || ''}" class="w-full bg-black/40 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 outline-none focus:border-blue-500"></td>
                 <td class="p-6 text-center text-[10px] font-black uppercase ${row.processed_by_name ? 'text-blue-400' : 'text-slate-600'}">${row.processed_by_name || "متاح"}</td>
                 <td class="p-6 flex gap-2 justify-end items-center mt-4">${btns}</td>
             </tr>`, 
-            mobile: `<div class="bg-slate-900/40 p-6 rounded-[2.5rem] border ${row.status === 'delete_requested' ? 'border-rose-500/50' : 'border-white/5'} space-y-4 shadow-xl">
+            mobile: `<div class="bg-slate-900/40 p-6 rounded-[2.5rem] border ${row.status === 'delete_requested' ? 'border-rose-500/50' : 'border-white/5'} space-y-4">
                 <div class="flex justify-between items-start">
                     <div>${cardContent}</div>
                     <span class="px-2 py-1 rounded-lg text-[8px] font-black border uppercase ${typeStyle}">${row.file_type || 'FT'}</span>
@@ -156,23 +185,21 @@ function render() {
     updateStats();
 }
 
-// 7. الإحصائيات (تعديل: استثناء طلبات الحذف من الإحصاء العام)
+// 8. الإحصائيات وفلترة البحث
 function updateStats() {
     const validRows = allRows.filter(r => r.status !== 'delete_requested');
     const total = validRows.length, approved = validRows.filter(r => r.status === "approved").length;
-    
     const pct = total > 0 ? Math.round((approved / total) * 100) : 0;
     if (document.getElementById("progressBar")) document.getElementById("progressBar").style.width = `${pct}%`;
     if (document.getElementById("progressText")) document.getElementById("progressText").textContent = `${pct}%`;
 }
 
-// 8. الأحداث والفلترة
 document.getElementById("searchBox")?.addEventListener('input', render);
 document.querySelectorAll(".filterBtn").forEach(btn => {
     btn.onclick = () => {
         currentFilter = btn.dataset.filter;
-        document.querySelectorAll(".filterBtn").forEach(b => b.className = "filterBtn flex-1 py-3 text-xs font-black rounded-xl text-slate-400 transition-all");
-        btn.className = "filterBtn flex-1 py-3 text-xs font-black rounded-xl bg-blue-600 text-white shadow-lg transition-all";
+        document.querySelectorAll(".filterBtn").forEach(b => b.className = "filterBtn flex-1 py-3 text-xs font-black rounded-xl text-slate-400");
+        btn.className = "filterBtn flex-1 py-3 text-xs font-black rounded-xl bg-blue-600 text-white shadow-lg";
         render();
     };
 });
