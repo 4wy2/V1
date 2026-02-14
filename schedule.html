@@ -231,7 +231,7 @@
     const container = document.getElementById("grid-container");
     const ACTIVE_SLOTS = isRamadanMode ? RAMADAN_SLOTS : TIME_SLOTS;
     
-    // ميزة تقصير وتطويل الجدول حسب المحاضرات (نفس منطق كودك الأصلي)
+    // ميزة تقصير وتطويل الجدول حسب المحاضرات
     let lastSlotIndex = 4;
     if (scheduleData.length > 0) {
         scheduleData.forEach(entry => {
@@ -244,7 +244,22 @@
     container.innerHTML = `<div class="header-pill">الوقت</div>` + DAYS_NAMES.map(d => `<div class="header-pill">${d}</div>`).join("");
 
     visibleSlots.forEach(slot => {
+      
+      // --- إضافة فواصل رمضان الذكية بناءً على الـ ID ---
+      if (isRamadanMode) {
+          // فاصل صلاة الظهر يظهر قبل المحاضرة التي كان توقيتها 10:15 (ID: 80)
+          if (slot.id === "80") {
+              container.innerHTML += `<div class="col-span-6 bg-slate-800 text-white text-[9px] font-bold py-1 text-center">صلاة الظهر (10 دقائق)</div>`;
+          }
+          // فاصل المساء يظهر قبل أول محاضرة ليلية (لو أضفتها لاحقاً بنفس منطق الـ ID)
+          if (slot.id === "pm1") { 
+              container.innerHTML += `<div class="col-span-6 bg-slate-800 text-white text-[9px] font-bold py-1 text-center">بعد صلاة العشاء</div>`;
+          }
+      }
+
+      // رسم صف المحاضرة المعتاد
       container.innerHTML += `<div class="cell-base time-cell"><div>${slot.s}</div><div>${slot.e}</div></div>`;
+      
       for (let d = 0; d < 5; d++) {
         const entry = scheduleData.find(x => x.day == d && x.slotId === slot.id);
         if (!entry) {
@@ -264,7 +279,7 @@
         }
       }
     });
-  }
+}
 
   function editCourse(name, room) {
     document.getElementById("courseName").value = name;
