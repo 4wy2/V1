@@ -92,10 +92,12 @@
                 💡 ملاحظة: أدخل جدولك الأساسي، وسيتم تحديث الأوقات تلقائياً عند تفعيل زر شهر رمضان.
             </p>
         </div>
-        <button id="ramadan-toggle" disabled style="opacity: 0.6; cursor: not-allowed;" onclick="toggleRamadanMode()" class="w-full bg-slate-800 text-white py-2.5 text-[11px] font-black flex items-center justify-center gap-2 transition-all">
-            <span id="ramadan-text">توقيت شهر رمضان المبارك</span>
-            <span id="ramadan-badge" class="bg-amber-400 text-white px-2 py-0.5 rounded-full text-[8px] animate-pulse">SOON</span>
-        </button>
+        <button id="ramadan-toggle" 
+    onclick="toggleRamadanMode()" 
+    class="w-full bg-slate-800 text-white py-2.5 text-[11px] font-black flex items-center justify-center gap-2 transition-all hover:bg-emerald-700 active:scale-95 shadow-lg">
+    <span id="ramadan-text">توقيت شهر رمضان المبارك</span>
+    <span id="ramadan-badge" class="bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] animate-pulse">ON</span>
+</button>
     </div>
     <div id="daysConfigs" class="space-y-2"></div>
     <button onclick="saveEntry()" class="btn-main">إضافة المادة</button>
@@ -138,12 +140,18 @@
 ];
 
   // أوقات الجدول الرمضاني (12 ساعة)
+  // أوقات الجدول الرمضاني (Ramadan) المأخوذة من صورتك
   const RAMADAN_SLOTS = [
-    { id: "54", s: "07:15", e: "07:55" }, { id: "86", s: "08:00", e: "08:40" },
-    { id: "44", s: "08:45", e: "09:25" }, { id: "80", s: "10:55", e: "11:35" },
-    { id: "47", s: "11:40", e: "12:20" }, { id: "63", s: "12:25", e: "01:05" },
-    { id: "52", s: "02:35", e: "03:15" }, { id: "51", s: "03:20", e: "04:00" },
-    { id: "59", s: "04:05", e: "04:45" }, { id: "60", s: "04:50", e: "05:30" }
+    { id: "1", s: "11:15 AM", e: "11:50 AM" },
+    { id: "2", s: "11:55 AM", e: "12:30 PM" },
+    { id: "3", s: "12:35 PM", e: "01:10 PM" },
+    { id: "4", s: "01:20 PM", e: "01:55 PM" },
+    { id: "5", s: "02:00 PM", e: "02:35 PM" },
+    { id: "6", s: "02:40 PM", e: "03:15 PM" },
+    { id: "7", s: "03:20 PM", e: "03:55 PM" },
+    { id: "8", s: "04:00 PM", e: "04:35 PM" },
+    { id: "9", s: "04:40 PM", e: "05:15 PM" },
+    { id: "10", s: "09:00 PM", e: "09:35 PM" } // بعد صلاة العشاء
   ];
 
   const DAYS_NAMES = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس"];
