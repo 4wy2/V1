@@ -142,15 +142,15 @@
   // أوقات الجدول الرمضاني (12 ساعة)
   // أوقات الجدول الرمضاني (Ramadan) المأخوذة من صورتك
   const RAMADAN_SLOTS = [
-  { id: "54", s: "11:15 AM", e: "11:50 AM" },
-  { id: "86", s: "11:55 AM", e: "12:30 PM" },
-  { id: "44", s: "12:35 PM", e: "01:10 PM" },
-  { id: "80", s: "01:20 PM", e: "01:55 PM" },
-  { id: "57", s: "02:00 PM", e: "02:35 PM" },
-  { id: "47", s: "02:40 PM", e: "03:15 PM" },
-  { id: "63", s: "03:20 PM", e: "03:55 PM" },
-  { id: "52", s: "04:00 PM", e: "04:35 PM" },
-  { id: "51", s: "04:40 PM", e: "05:15 PM" },
+  { id: "54", s: "10:00 AM", e: "10:35 AM" },
+  { id: "86", s: "10:40 AM", e: "11:15 AM" },
+  { id: "44", s: "11:20 AM", e: "11:55 AM" },
+  { id: "80", s: "12:00 PM", e: "12:35 PM" },
+  { id: "57", s: "01:00 PM", e: "01:35 PM" }, // بعد الظهر
+  { id: "47", s: "01:40 PM", e: "02:15 PM" },
+  { id: "63", s: "02:20 PM", e: "02:55 PM" },
+  { id: "52", s: "03:00 PM", e: "03:35 PM" },
+  { id: "51", s: "03:40 PM", e: "04:15 PM" },
 
 ];
 
@@ -245,15 +245,19 @@
 
     visibleSlots.forEach(slot => {
       
-      // --- إضافة فواصل رمضان الذكية بناءً على الـ ID ---
+      // --- إضافة فواصل رمضان بناءً على الجدول الجديد ---
       if (isRamadanMode) {
-          // فاصل صلاة الظهر يظهر قبل المحاضرة التي كان توقيتها 10:15 (ID: 80)
-          if (slot.id === "80") {
-              container.innerHTML += `<div class="col-span-6 bg-slate-800 text-white text-[9px] font-bold py-1 text-center">صلاة الظهر (10 دقائق)</div>`;
+          // فاصل صلاة الظهر: يظهر قبل المحاضرة التي تبدأ 13:00 (كانت سابقاً 11:15 - ID: 57)
+          if (slot.id === "57") {
+              container.innerHTML += `<div class="col-span-6 bg-slate-800 text-white text-[9px] font-bold py-1 text-center italic">صلاة الظهر</div>`;
           }
-          // فاصل المساء يظهر قبل أول محاضرة ليلية (لو أضفتها لاحقاً بنفس منطق الـ ID)
-          if (slot.id === "pm1") { 
-              container.innerHTML += `<div class="col-span-6 bg-slate-800 text-white text-[9px] font-bold py-1 text-center">بعد صلاة العشاء</div>`;
+          // فاصل صلاة العصر: يظهر قبل المحاضرة التي تبدأ 16:30 (كانت سابقاً 16:15 - ID: pm1)
+          if (slot.id === "pm1") {
+              container.innerHTML += `<div class="col-span-6 bg-slate-800 text-white text-[9px] font-bold py-1 text-center italic">صلاة العصر</div>`;
+          }
+          // فاصل صلاة المغرب: يظهر قبل المحاضرة التي تبدأ 21:05 (ID: pm3 مثلاً إذا أضفتها)
+          if (slot.id === "pm3") { 
+              container.innerHTML += `<div class="col-span-6 bg-slate-800 text-white text-[9px] font-bold py-1 text-center italic">صلاة المغرب</div>`;
           }
       }
 
