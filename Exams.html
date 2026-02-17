@@ -243,9 +243,49 @@
         .empty-state i { font-size: 40px; }
         .empty-state p { font-size: 13px; }
     }
+        /* زر الرجوع المطور */
+.back-home {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    padding: 10px 18px;
+    border-radius: 12px;
+    color: white;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: 0.3s;
+    z-index: 100;
+}
+
+.back-home:hover {
+    background: rgba(128, 66, 255, 0.2);
+    border-color: var(--primary);
+    transform: translateX(-5px); /* حركة خفيفة لليمين لأن الاتجاه RTL */
+}
+
+/* تعديل مكانه في الجوال ليصبح أرشق */
+@media (max-width: 600px) {
+    .back-home {
+        top: 15px;
+        right: 15px;
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+}
 </style>
 </head>
 <body>
+    <a href="https://Engineer-ee.com" class="back-home">
+    <i class="fa-solid fa-arrow-right"></i>
+    العودة 
+</a>
 
     <div class="bg-blobs">
     <div class="blob" style="width:600px; height:600px; background:var(--primary); top:-200px; right:-150px;"></div>
