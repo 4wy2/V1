@@ -349,6 +349,22 @@
             dayjs.extend(window.dayjs_plugin_customParseFormat);
         }
         dayjs.locale('ar'); 
+
+        // 🌟 إصلاح مشكلة حذف المواد في الجداول القديمة للطلاب 🌟
+        let needsUpdate = false;
+        myExams = myExams.map(ex => {
+            if (!ex.id) { // إذا كانت المادة قديمة ولا تحتوي على ID
+                ex.id = generateExamId(ex); // قم بتوليد ID لها
+                needsUpdate = true;
+            }
+            return ex;
+        });
+        
+        // إذا وجدنا مواد قديمة وتم تحديثها، نحفظ التعديل في جهاز الطالب
+        if (needsUpdate) {
+            localStorage.setItem('yic_saved_exams', JSON.stringify(myExams));
+        }
+
         loadData();
     });
 
