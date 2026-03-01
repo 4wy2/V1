@@ -437,96 +437,102 @@
     }
 
     async function loadData() {
-        const searchRows = document.getElementById('searchRows');
-        const API_URL = 'https://examdata.mohammed-rasasi.workers.dev/?campus=main';
+    const searchRows = document.getElementById('searchRows');
+    const API_URL = 'https://examdata.mohammed-rasasi.workers.dev/?campus=main';
 
-        try {
-            const cachedData = localStorage.getItem('all_exams_cache');
-            if (cachedData) {
-                allExams = JSON.parse(cachedData);
-                renderMySchedule();
+    try {
+        // 🌟 الإضافة هنا: مسح الكاش القديم فوراً لضمان ظهور جداول الميد الجديدة للجميع
+        localStorage.removeItem('all_exams_cache');
+        
+        // ملاحظة: قمت بتعطيل قراءة الكاش القديم مؤقتاً لنجبر الموقع يسحب من السيرفر
+        /* const cachedData = localStorage.getItem('all_exams_cache');
+        if (cachedData) {
+            allExams = JSON.parse(cachedData);
+            renderMySchedule();
+        }
+        */
+
+        const response = await fetch(API_URL);
+        if (!response.ok) throw new Error('تعذر جلب البيانات من السيرفر');
+
+        const data = await response.json();
+        
+        // 🌟 حقن بيانات الـ Config في العناوين بوضوح 🌟
+        if (data.config) {
+            // 1. عرض الفصل الدراسي (Semester)
+            const semesterEl = document.getElementById('dynamicSemester');
+            if (data.config.semester) {
+                semesterEl.innerText = data.config.semester;
+                semesterEl.style.display = 'inline-block';
             }
 
-            const response = await fetch(API_URL);
-            if (!response.ok) throw new Error('تعذر جلب البيانات من السيرفر');
+            // 2. دمج العنوان والمرحلة (Phase + Exam Type)
+            const phaseTitle = data.config.phase_title || "";
+            const examType = data.config.exam_type || "";
+            const mainTitleText = (phaseTitle && examType) ? `${phaseTitle} - ${examType}` : (phaseTitle || examType || "منصة الجداول");
+            document.getElementById('dynamicMainTitle').innerText = mainTitleText;
 
-            const data = await response.json();
+            // 3. عرض رسالة التنبيه (Alert Message)
+            const alertEl = document.getElementById('dynamicAlert');
+            if (data.config.alert_message) {
+                alertEl.innerText = data.config.alert_message;
+                alertEl.style.display = 'block';
+                // تغيير لون التنبيه بناءً على حالة الجدول
+                if (data.config.is_id_search_active) {
+                    alertEl.style.color = 'var(--accent)'; // أخضر إذا كان رسمي
+                } else {
+                    alertEl.style.color = 'var(--accent)'; // برتقالي إذا كان مبدئي
+                }
+            }
+
+            // إدارة البوب أب والتبويبات من الإعدادات
+            if (data.config.is_id_search_active && !sessionStorage.getItem('idPopupClosed') && !new URLSearchParams(window.location.search).get('shared')) {
+                document.getElementById('takeoverPopup').style.display = 'flex';
+            }
             
-            // 🌟 حقن بيانات הـ Config في العناوين بوضوح 🌟
-            if (data.config) {
-                // 1. عرض الفصل الدراسي (Semester)
-                const semesterEl = document.getElementById('dynamicSemester');
-                if (data.config.semester) {
-                    semesterEl.innerText = data.config.semester;
-                    semesterEl.style.display = 'inline-block';
-                }
-
-                // 2. دمج العنوان والمرحلة (Phase + Exam Type)
-                const phaseTitle = data.config.phase_title || "";
-                const examType = data.config.exam_type || "";
-                const mainTitleText = (phaseTitle && examType) ? `${phaseTitle} - ${examType}` : (phaseTitle || examType || "منصة الجداول");
-                document.getElementById('dynamicMainTitle').innerText = mainTitleText;
-
-                // 3. عرض رسالة التنبيه (Alert Message)
-                const alertEl = document.getElementById('dynamicAlert');
-                if (data.config.alert_message) {
-                    alertEl.innerText = data.config.alert_message;
-                    alertEl.style.display = 'block';
-                    // تغيير لون التنبيه بناءً على حالة الجدول
-                    if (data.config.is_id_search_active) {
-                        alertEl.style.color = 'var(--accent)'; // أخضر إذا كان رسمي
-                    } else {
-                        alertEl.style.color = 'var(--accent)'; // برتقالي إذا كان مبدئي
-                    }
-                }
-
-                // إدارة البوب أب والتبويبات من الإعدادات
-               if (data.config.is_id_search_active && !sessionStorage.getItem('idPopupClosed') && !new URLSearchParams(window.location.search).get('shared')) {
-                    document.getElementById('takeoverPopup').style.display = 'flex';
-                }
+            if (!data.config.is_id_search_active) {
+                const idTabBtn = document.getElementById('idTabBtn');
                 
-                if (!data.config.is_id_search_active) {
-                    const idTabBtn = document.getElementById('idTabBtn');
-                    
-                    // نخلي شكله خافت شوي ونجنبه القفل
-                    idTabBtn.style.opacity = '0.5';
-                    idTabBtn.innerHTML = '<i class="fa-solid fa-lock"></i> بالرقم الأكاديمي';
-                    
-                    // نلغي وظيفة فتح التبويب ونخليها تطلع إشعار التلميح للطالب
-                    idTabBtn.onclick = function() {
-                        showToast('⏳ تفتح هذه الخاصية فور نزول الجدول بالايدي !', 'warning');
-                    };
-                }
-            }
-
-            if (data.exams_list) {
-                allExams = data.exams_list.map(ex => {
-                    const code = ex.code.trim();
-                    const course_name = ex.course_name.trim();
-                    return {
-                        ...ex,
-                        code, course_name,
-                        id: generateExamId(ex),
-                        searchKey: (code + " " + course_name).toLowerCase().replace(/\s+/g, '')
-                    };
-                });
-
-                allExams.sort((a, b) => {
-                    return dayjs(a.date.split(' ')[0], 'DD-MM-YYYY') - dayjs(b.date.split(' ')[0], 'DD-MM-YYYY');
-                });
-
-                localStorage.setItem('all_exams_cache', JSON.stringify(allExams));
-                renderMySchedule();
+                // نخلي شكله خافت شوي ونجنبه القفل
+                idTabBtn.style.opacity = '0.5';
+                idTabBtn.innerHTML = '<i class="fa-solid fa-lock"></i> بالرقم الأكاديمي';
                 
-                checkSharedSchedule();
-            }
-        } catch (error) {
-            console.error("Error:", error);
-            if (!allExams || allExams.length === 0) {
-                searchRows.innerHTML = `<div style="text-align: center; padding: 60px; color: var(--danger);">خطأ في الاتصال بالسيرفر</div>`;
+                // نلغي وظيفة فتح التبويب ونخليها تطلع إشعار التلميح للطالب
+                idTabBtn.onclick = function() {
+                    showToast('⏳ تفتح هذه الخاصية فور نزول الجدول بالايدي !', 'warning');
+                };
             }
         }
+
+        if (data.exams_list) {
+            allExams = data.exams_list.map(ex => {
+                const code = ex.code.trim();
+                const course_name = ex.course_name.trim();
+                return {
+                    ...ex,
+                    code, course_name,
+                    id: generateExamId(ex),
+                    searchKey: (code + " " + course_name).toLowerCase().replace(/\s+/g, '')
+                };
+            });
+
+            allExams.sort((a, b) => {
+                return dayjs(a.date.split(' ')[0], 'DD-MM-YYYY') - dayjs(b.date.split(' ')[0], 'DD-MM-YYYY');
+            });
+
+            // هنا يتم تخزين البيانات الجديدة الطازجة في الكاش
+            localStorage.setItem('all_exams_cache', JSON.stringify(allExams));
+            renderMySchedule();
+            
+            checkSharedSchedule();
+        }
+    } catch (error) {
+        console.error("Error:", error);
+        if (!allExams || allExams.length === 0) {
+            searchRows.innerHTML = `<div style="text-align: center; padding: 60px; color: var(--danger);">خطأ في الاتصال بالسيرفر</div>`;
+        }
     }
+}
 
     function createRow(ex, isSaved, searchQuery = '', isReadOnly = false) {
         const row = document.createElement('div');
