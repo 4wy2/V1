@@ -441,9 +441,7 @@
         const API_URL = 'https://examdata.mohammed-rasasi.workers.dev/?campus=main';
 
         try {
-           localStorage.removeItem('all_exams_cache'); 
-    
-            const response = await fetch(API_URL);
+            const cachedData = localStorage.getItem('all_exams_cache');
             if (cachedData) {
                 allExams = JSON.parse(cachedData);
                 renderMySchedule();
