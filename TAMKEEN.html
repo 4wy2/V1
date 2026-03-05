@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>  بوابة مشاريع التخرج | YIC </title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
+        
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; opacity: 0; }
+        @keyframes fadeIn { 
+            from { opacity: 0; transform: translateY(10px) scale(0.98); } 
+            to { opacity: 1; transform: translateY(0) scale(1); } 
+        }
+        
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* إخفاء مسار التنقل عند الطباعة */
+        @media print {
+            body { background: white !important; }
+            .no-print, #breadcrumbs { display: none !important; }
+            .print-break { page-break-inside: avoid; margin-bottom: 24px; }
+            .shadow-sm, .shadow-md, .border { box-shadow: none !important; border: 1px solid #cbd5e1 !important; }
+            #app { padding: 0 !important; margin-top: 0 !important; max-width: 100% !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col selection:bg-blue-200 selection:text-blue-900">
+
+    <nav class="bg-slate-900 text-white shadow-lg sticky top-0 z-50 border-b-4 border-blue-600 no-print">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-3 flex flex-wrap justify-between items-center gap-4">
+            <div class="flex items-center gap-3 cursor-pointer hover:opacity-80 transition" onclick="goHome()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); goHome(); }">
+                <div class="bg-blue-600 p-2 rounded-lg shadow-inner">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <div>
+                    <h1 class="text-lg md:text-xl font-black tracking-wide leading-tight">المنصة المركزية لمشاريع التخرج</h1>
+                    <p class="text-[10px] md:text-xs text-blue-200 font-bold tracking-wider flex items-center gap-2 mt-1">
+                        متابعة التقدم
+                        <span id="currentWeekBadge" class="bg-blue-800 text-white px-2 py-0.5 rounded text-[10px] shadow-sm hidden"></span>
+                    </p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <span id="lastUpdated" class="text-xs text-slate-300 font-semibold hidden lg:block bg-slate-800 px-3 py-1.5 rounded-md border border-slate-700"></span>
+                <button onclick="fetchAndBuildData()" aria-label="تحديث البيانات" class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 md:px-5 py-2 rounded-md transition-all text-sm font-bold shadow-sm group">
+                    <span class="group-hover:rotate-180 transition-transform duration-500">🔄</span> <span class="hidden md:inline">تحديث البيانات</span>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="bg-white border-b border-slate-200 shadow-sm relative z-40 overflow-x-auto whitespace-nowrap">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-3 text-sm font-semibold flex items-center gap-2 min-w-max" id="breadcrumbs"></div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-8 flex-grow w-full" id="app">
+        <div class="flex flex-col items-center justify-center py-32 fade-in">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mb-4"></div>
+            <p class="text-slate-500 font-bold text-lg">جاري تحميل مساحة العمل...</p>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-6 text-center mt-auto no-print">
+        <div class="max-w-7xl mx-auto px-6">
+            <p class="text-sm font-bold text-slate-500">&copy; 2026 كلية ينبع الصناعية</p>
+        </div>
+    </footer>
+
+    <script>
+        const TOTAL_WEEKS = 15; 
+        let CURRENT_WEEK = 1; 
+
+        const DEPT_THEMES = {
+            'EE':  { color: 'orange', ring: '#f97316', bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200' },
+            'CSE': { color: 'indigo', ring: '#4f46e5', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+            'CS':  { color: 'indigo', ring: '#4f46e5', bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
+            'ME':  { color: 'slate', ring: '#475569', bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300' },
+            'MS':  { color: 'purple', ring: '#9333ea', bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+            'CHE': { color: 'teal', ring: '#0d9488', bg: 'bg-teal-50', text: 'text-teal-700', border: 'border-teal-200' },
+            'DEFAULT': { color: 'blue', ring: '#2563eb', bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' }
+        };
+
+        function getDeptTheme(deptCode) {
+            let code = deptCode.toUpperCase().trim();
+            if(code.includes('CSE') || code.includes('CS')) return DEPT_THEMES['CSE'];
+            return DEPT_THEMES[code] || DEPT_THEMES['DEFAULT'];
+        }
+
+        let siteData = { departments: [], stats: { total: 0, completed: 0, inProgress: 0, delayed: 0, overallProgress: 0, sumProgress: 0 } };
+        // [تعديل]: إضافة chartView للحالة
+        let state = { view: 'home', activeDeptIndex: null, activeProjIndex: null, searchQuery: '', statusFilter: 'All', sortFilter: 'default', chartView: 'deptBar' };
+        let searchTimeout = null;
+        let mainChartInstance = null; 
+        
+        const BASE_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTvwBCRNKVIlbxlpTPNwLt0nDLb4SvYqDc1DjpzEHOivVLolDZAo5UUjkjpi8CzNvWHa3JVuYRIS_uC/pub?output=csv";
+        const appDiv = document.getElementById('app');
+
+        // دالة ذكية لمعالجة النصوص العربية وتوحيد البحث
+        function normArabic(s = '') {
+            return s.toString()
+                .trim()
+                .normalize('NFKD')
+                .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '') // إزالة التشكيل
+                .replace(/[إأآا]/g, 'ا') // توحيد الألف
+                .replace(/ى/g, 'ي') // توحيد الياء
+                .replace(/ؤ/g, 'و') // توحيد الواو
+                .replace(/ئ/g, 'ي') // توحيد النبرة
+                .toLowerCase();
+        }
+
+        async function fetchAndBuildData() {
+            appDiv.innerHTML = `<div class="flex flex-col items-center justify-center py-32 fade-in"><div class="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mb-4"></div><p class="text-slate-500 font-bold text-lg">مزامنة مؤشرات الأداء...</p></div>`;
+            const NO_CACHE_URL = BASE_CSV_URL + "&t=" + new Date().getTime();
+            let csvText = "";
+
+            try {
+                const response = await fetch(NO_CACHE_URL);
+                if (!response.ok) throw new Error("Network");
+                csvText = await response.text();
+            } catch (e) {
+                try {
+                    const fallbackResponse = await fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent(NO_CACHE_URL));
+                    if (!fallbackResponse.ok) throw new Error("Proxy");
+                    csvText = await fallbackResponse.text();
+                } catch (err) {
+                    appDiv.innerHTML = `<div class="bg-red-50 p-8 text-center border-t-4 border-red-600 rounded-lg shadow-sm max-w-lg mx-auto"><h2 class="text-xl font-bold text-red-800 mb-2">تعذر الاتصال بقاعدة البيانات</h2><button onclick="fetchAndBuildData()" class="bg-red-100 text-red-700 px-4 py-2 rounded-md font-bold hover:bg-red-200 border border-red-200 mt-2">إعادة المحاولة</button></div>`;
+                    return;
+                }
+            }
+
+            Papa.parse(csvText, {
+                header: true, skipEmptyLines: 'greedy',
+                transformHeader: h => h ? h.trim() : "",
+                complete: function(results) {
+                    try {
+                        if (!results.data || results.data.length === 0) throw new Error("قاعدة البيانات فارغة.");
+                        buildSiteData(results.data);
+                        
+                        const now = new Date();
+                        document.getElementById('lastUpdated').innerText = `التحديث: ${now.toLocaleTimeString('ar-SA')} | الأسبوع: ${CURRENT_WEEK}`;
+                        
+                        const weekBadge = document.getElementById('currentWeekBadge');
+                        if(weekBadge) {
+                            weekBadge.innerText = `الأسبوع الحالي: ${CURRENT_WEEK}`;
+                            weekBadge.classList.remove('hidden');
+                        }
+
+                        goHome(); 
+                    } catch (e) {
+                        appDiv.innerHTML = `<div class="bg-amber-50 p-8 text-center border-t-4 border-amber-500 rounded-lg shadow-sm max-w-lg mx-auto"><h2 class="text-xl font-bold text-amber-800 mb-2">خطأ في هيكلة البيانات</h2><p class="text-amber-700 text-sm">${e.message}</p></div>`;
+                    }
+                }
+            });
+        }
+
+        function buildSiteData(rows) {
+            let deptMap = {};
+            siteData.stats = { total: 0, completed: 0, inProgress: 0, delayed: 0, overallProgress: 0, sumProgress: 0 }; 
+
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i]['الأسبوع الحالي'] && rows[i]['الأسبوع الحالي'].trim() !== '') {
+                    CURRENT_WEEK = parseInt(rows[i]['الأسبوع الحالي'].trim()) || 1;
+                    break;
+                }
+            }
+
+            rows.forEach(row => {
+                let deptCode = (row['رمز القسم'] || "").trim();
+                let projId = (row['معرف المشروع'] || "").trim();
+                if(!deptCode || !projId) return; 
+
+                let title = (row['العنوان'] || "").trim();
+                let status = (row['الحالة'] || "").trim() || "Pending";
+                let rawWeeks = (row['الأسابيع المنجزة'] || row['نسبة الإنجاز'] || "0").toString().replace('%', '').trim();
+                let completedWeeks = Math.min(TOTAL_WEEKS, Math.max(0, parseInt(rawWeeks) || 0));
+                
+                if(status === 'Completed' || status === 'مكتمل') completedWeeks = TOTAL_WEEKS;
+                let progress = Math.round((completedWeeks / TOTAL_WEEKS) * 100);
+
+                siteData.stats.total++;
+                siteData.stats.sumProgress += progress;
+                
+                // حساب المتأخرين بشكل صحيح
+                if (completedWeeks === TOTAL_WEEKS) {
+                    siteData.stats.completed++;
+                } else {
+                    siteData.stats.inProgress++;
+                    if (CURRENT_WEEK > completedWeeks) {
+                        siteData.stats.delayed++;
+                    }
+                }
+
+                if(!deptMap[deptCode]) deptMap[deptCode] = { code: deptCode, name: (row['اسم القسم'] || "").trim() || deptCode, projects: [], sumProgress: 0 };
+
+                deptMap[deptCode].sumProgress += progress;
+                deptMap[deptCode].projects.push({
+                    id: projId, title: title, status: completedWeeks === TOTAL_WEEKS ? 'مكتمل' : status, 
+                    supervisor: (row['المشرف'] || "غير محدد").trim(), 
+                    completedWeeks: completedWeeks, progress: progress, 
+                    student_url: (row['رابط المشروع'] || "#").trim(), tamkeen_url: (row['رابط تمكين'] || "#").trim()
+                });
+            });
+
+            siteData.stats.overallProgress = siteData.stats.total > 0 ? Math.round(siteData.stats.sumProgress / siteData.stats.total) : 0;
+            Object.values(deptMap).forEach(dept => {
+                dept.averageProgress = dept.projects.length > 0 ? Math.round(dept.sumProgress / dept.projects.length) : 0;
+            });
+            siteData.departments = Object.values(deptMap);
+        }
+
+        function updateBreadcrumbs() {
+            const b = document.getElementById('breadcrumbs');
+            let html = `<button onclick="goHome()" class="text-slate-500 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-md transition flex items-center gap-1.5"><span class="text-lg">🏠</span> الرئيسية</button>`;
+            
+            if (state.view === 'dept' || state.view === 'project') {
+                const dept = siteData.departments[state.activeDeptIndex];
+                html += `<span class="text-slate-300">/</span><button onclick="goDept(${state.activeDeptIndex})" class="text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-3 py-1.5 rounded-md transition font-bold">${dept.name} (${dept.code})</button>`;
+            }
+            if (state.view === 'project') {
+                const proj = siteData.departments[state.activeDeptIndex].projects[state.activeProjIndex];
+                html += `<span class="text-slate-300">/</span><span class="text-blue-700 font-bold bg-blue-50 border border-blue-100 px-3 py-1.5 rounded-md">${proj.id}</span>`;
+            }
+            b.innerHTML = html;
+        }
+
+        function getHealthBadge(completedWeeks) {
+            if(completedWeeks >= TOTAL_WEEKS) return `<span class="bg-emerald-50 text-emerald-700 text-[11px] font-bold px-2 py-1 rounded border border-emerald-200 flex items-center gap-1"><span>✅</span> مكتمل</span>`;
+            let diff = CURRENT_WEEK - completedWeeks;
+            if(diff <= 0) return `<span class="bg-blue-50 text-blue-700 text-[11px] font-bold px-2 py-1 rounded border border-blue-200 flex items-center gap-1"><span>🟢</span> منتظم</span>`;
+            return `<span class="bg-red-50 text-red-700 text-[11px] font-bold px-2 py-1 rounded border border-red-200 flex items-center gap-1"><span>⚠️</span> متأخر (${diff})</span>`;
+        }
+
+        function renderSegmentedBar(completedWeeks) {
+            let blocks = '';
+            for(let i = 1; i <= TOTAL_WEEKS; i++) {
+                let colorClass = i <= completedWeeks ? (completedWeeks === TOTAL_WEEKS ? 'bg-emerald-500' : 'bg-blue-500') : 'bg-slate-200';
+                blocks += `<div class="flex-1 h-2 rounded-sm ${colorClass}"></div>`;
+            }
+            return `<div class="flex w-full gap-[2px] mt-2">${blocks}</div>`;
+        }
+
+        function renderDashboardStats() {
+            const total = siteData.stats.total || 1; 
+            const compPct = Math.round((siteData.stats.completed / total) * 100);
+            const inProgPct = Math.round((siteData.stats.inProgress / total) * 100);
+            const delayedCount = siteData.stats.delayed || 0;
+            const delayedPct = Math.round((delayedCount / total) * 100);
+
+            return `
+                <div class="bg-slate-900 rounded-xl p-5 md:p-6 mb-6 shadow-lg flex flex-col md:flex-row items-center justify-between gap-4 border border-slate-800 fade-in relative overflow-hidden">
+                    <div class="absolute -left-10 -top-10 w-40 h-40 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+                    <div class="text-white text-center md:text-right w-full md:w-auto z-10">
+                        <h2 class="text-lg md:text-xl font-bold text-slate-100">متوسط إنجاز المشاريع</h2>
+                        <p class="text-xs md:text-sm text-slate-400 mt-1">يعكس متوسط الإنجاز لكافة المشاريع المعتمدة في النظام</p>
+                    </div>
+                    <div class="w-full md:w-1/2 flex items-center gap-4 z-10">
+                        <div class="flex-grow h-3 md:h-4 bg-slate-800 rounded-full overflow-hidden border border-slate-700 shadow-inner">
+                            <div class="bg-gradient-to-l from-blue-400 to-blue-600 h-full rounded-full relative" style="width: ${siteData.stats.overallProgress}%">
+                                <div class="absolute inset-0 bg-white/20 w-full h-full animate-[pulse_2s_ease-in-out_infinite]"></div>
+                            </div>
+                        </div>
+                        <span class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-l from-blue-200 to-white">${siteData.stats.overallProgress}%</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-8">
+                    <div onclick="handleFilter('All'); document.getElementById('breadcrumbs').scrollIntoView({behavior: 'smooth'})" class="group cursor-pointer bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 hover:border-slate-400 transition-all duration-300 flex flex-col border-r-4 border-r-slate-600 fade-in" style="animation-delay: 0.1s">
+                        <div class="flex justify-between items-start">
+                            <p class="text-slate-500 font-bold text-xs md:text-sm transition-colors group-hover:text-slate-700">كل المشاريع</p>
+                            <span class="bg-slate-50 text-slate-500 p-1.5 rounded-lg transition-transform group-hover:scale-110">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>
+                            </span>
+                        </div>
+                        <div class="flex items-end justify-between mt-2">
+                            <h3 class="text-2xl md:text-3xl font-black text-slate-800">${siteData.stats.total}</h3>
+                            <span class="text-[10px] md:text-xs font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded">100%</span>
+                        </div>
+                    </div>
+
+                    <div onclick="handleFilter('Completed'); document.getElementById('breadcrumbs').scrollIntoView({behavior: 'smooth'})" class="group cursor-pointer bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 hover:border-emerald-400 transition-all duration-300 flex flex-col border-r-4 border-r-emerald-500 fade-in" style="animation-delay: 0.15s">
+                        <div class="flex justify-between items-start">
+                            <p class="text-slate-500 font-bold text-xs md:text-sm transition-colors group-hover:text-emerald-700">المشاريع المنجزة</p>
+                            <span class="bg-emerald-50 text-emerald-500 p-1.5 rounded-lg transition-transform group-hover:scale-110">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                            </span>
+                        </div>
+                        <div class="flex items-end justify-between mt-2">
+                            <h3 class="text-2xl md:text-3xl font-black text-emerald-600">${siteData.stats.completed}</h3>
+                            <span class="text-[10px] md:text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded">${compPct}%</span>
+                        </div>
+                    </div>
+
+                    <div onclick="handleFilter('In Progress'); document.getElementById('breadcrumbs').scrollIntoView({behavior: 'smooth'})" class="group cursor-pointer bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 hover:border-blue-400 transition-all duration-300 flex flex-col border-r-4 border-r-blue-500 fade-in" style="animation-delay: 0.2s">
+                        <div class="flex justify-between items-start">
+                            <p class="text-slate-500 font-bold text-xs md:text-sm transition-colors group-hover:text-blue-700">جاري العمل</p>
+                            <span class="bg-blue-50 text-blue-500 p-1.5 rounded-lg transition-transform group-hover:scale-110">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            </span>
+                        </div>
+                        <div class="flex items-end justify-between mt-2">
+                            <h3 class="text-2xl md:text-3xl font-black text-blue-600">${siteData.stats.inProgress}</h3>
+                            <span class="text-[10px] md:text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">${inProgPct}%</span>
+                        </div>
+                    </div>
+
+                    <div onclick="handleFilter('Delayed'); document.getElementById('breadcrumbs').scrollIntoView({behavior: 'smooth'})" class="group cursor-pointer bg-white p-4 md:p-5 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-1 hover:border-red-400 transition-all duration-300 flex flex-col border-r-4 border-r-red-500 fade-in" style="animation-delay: 0.25s">
+                        <div class="flex justify-between items-start">
+                            <p class="text-slate-500 font-bold text-xs md:text-sm transition-colors group-hover:text-red-700">متأخرة عن الخطة</p>
+                            <span class="bg-red-50 text-red-500 p-1.5 rounded-lg transition-transform group-hover:scale-110">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </span>
+                        </div>
+                        <div class="flex items-end justify-between mt-2">
+                            <h3 class="text-2xl md:text-3xl font-black text-red-600">${delayedCount}</h3>
+                            <span class="text-[10px] md:text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded">${delayedPct}%</span>
+                        </div>
+                    </div>
+
+                </div>
+            `;
+        }
+
+        function renderControls() {
+            return `
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-8 flex flex-col md:flex-row gap-4 items-center fade-in print-break" style="animation-delay: 0.1s">
+                    <div class="relative flex-grow w-full">
+                        <span class="absolute inset-y-0 right-3 flex items-center text-slate-400">🔍</span>
+                        <input type="text" placeholder="ابحث برقم المشروع، العنوان، أو المشرف..." 
+                               value="${state.searchQuery}" oninput="debouncedSearch(this.value)"
+                               class="w-full pl-3 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-blue-500 focus:bg-white transition text-sm font-semibold text-slate-700 placeholder-slate-400">
+                    </div>
+                    <div class="flex gap-3 w-full md:w-auto">
+                        <select onchange="handleFilter(this.value)" class="w-1/2 md:w-36 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 text-sm font-semibold text-slate-700 outline-none cursor-pointer">
+                            <option value="All" ${state.statusFilter === 'All' ? 'selected' : ''}>الكل</option>
+                            <option value="In Progress" ${state.statusFilter === 'In Progress' ? 'selected' : ''}>جاري العمل</option>
+                            <option value="Delayed" ${state.statusFilter === 'Delayed' ? 'selected' : ''}>متأخرة</option>
+                            <option value="Completed" ${state.statusFilter === 'Completed' ? 'selected' : ''}>مكتملة</option>
+                        </select>
+                        <select onchange="handleSort(this.value)" class="w-1/2 md:w-44 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:border-blue-500 text-sm font-semibold text-slate-700 outline-none cursor-pointer">
+                            <option value="default" ${state.sortFilter === 'default' ? 'selected' : ''}>ترتيب افتراضي</option>
+                            <option value="high" ${state.sortFilter === 'high' ? 'selected' : ''}>الأعلى إنجازاً</option>
+                            <option value="low" ${state.sortFilter === 'low' ? 'selected' : ''}>الأقل إنجازاً</option>
+                            <option value="az" ${state.sortFilter === 'az' ? 'selected' : ''}>أبجدياً (أ-ي)</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createProjectCard(project, deptCode, dIndex, pIndex, animationDelay = 0) {
+            let theme = getDeptTheme(deptCode);
+            let isComplete = project.completedWeeks === TOTAL_WEEKS;
+
+            return `
+                <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); goProject(${dIndex}, ${pIndex}); }" onclick="goProject(${dIndex}, ${pIndex})" class="bg-white p-5 rounded-xl border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all cursor-pointer flex flex-col h-full fade-in" style="animation-delay: ${animationDelay}s">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="text-[11px] font-black text-slate-600 bg-slate-100 px-2 py-1 rounded border border-slate-200 tracking-wide">${project.id}</span>
+                        ${getHealthBadge(project.completedWeeks)}
+                    </div>
+                    
+                    <h4 class="text-base font-bold text-slate-800 mb-5 flex-grow leading-snug">${project.title}</h4>
+                    
+                    <div class="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <div class="flex justify-between text-[11px] font-bold text-slate-500 mb-1">
+                            <span>مؤشر التسليم (${project.completedWeeks}/${TOTAL_WEEKS})</span>
+                            <span class="${isComplete ? 'text-emerald-600' : 'text-blue-600'}">${project.progress}%</span>
+                        </div>
+                        ${renderSegmentedBar(project.completedWeeks)}
+                    </div>
+                    
+                    <div class="pt-3 border-t border-slate-100 text-[11px] text-slate-500 flex justify-between items-center font-bold">
+                        <span class="truncate pr-1">👨‍🏫 ${project.supervisor}</span>
+                        <span class="${theme.bg} ${theme.text} px-2 py-1 rounded border ${theme.border}">${deptCode}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // [تعديل]: إضافة دالة لتغيير نوع الرسم البياني
+        function changeChartType(type) {
+            state.chartView = type;
+            initChart(); 
+        }
+
+        function renderHome() {
+            updateBreadcrumbs();
+            if (state.searchQuery || state.statusFilter !== 'All' || state.sortFilter !== 'default') {
+                renderSearchResults();
+                return;
+            }
+
+            let html = `<div class="fade-in">${renderDashboardStats()}${renderControls()}`;
+
+            // [تعديل]: إضافة القائمة المنسدلة للتبديل بين الشارتات وتغيير ID الـ Canvas
+            html += `
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm mb-8 fade-in print-break" style="animation-delay: 0.3s">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 border-b border-slate-100 pb-3 gap-3">
+                        <h3 class="text-lg font-bold text-slate-800">التحليل البياني</h3>
+                        <select onchange="changeChartType(this.value)" class="w-full sm:w-auto px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 outline-none cursor-pointer focus:border-blue-500 transition-colors shadow-sm">
+                            <option value="deptBar" ${state.chartView === 'deptBar' ? 'selected' : ''}>📊 مقارنة أداء الأقسام</option>
+                            <option value="statusDoughnut" ${state.chartView === 'statusDoughnut' ? 'selected' : ''}>🍩 حالة مشاريع الكلية (الإجمالي)</option>
+                        </select>
+                    </div>
+                    <div class="h-64 w-full relative"><canvas id="mainDashboardChart"></canvas></div>
+                </div>
+                
+                <h3 class="text-lg font-bold text-slate-800 mb-4 fade-in" style="animation-delay: 0.35s">التقارير التفصيلية للأقسام</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+            `;
+            
+            siteData.departments.forEach((dept, index) => {
+                let theme = getDeptTheme(dept.code);
+                let ringColor = dept.averageProgress === 100 ? '#10b981' : theme.ring; 
+                let donutStyle = `background: conic-gradient(${ringColor} ${dept.averageProgress}%, #f1f5f9 0);`;
+
+                html += `
+                    <div role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' ') { event.preventDefault(); goDept(${index}); }" onclick="goDept(${index})" class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all cursor-pointer flex flex-col border-t-4 fade-in" style="border-top-color: ${theme.ring}; animation-delay: ${0.4 + (index * 0.05)}s">
+                        <div class="flex justify-between items-center mb-5">
+                            <div>
+                                <h3 class="text-2xl font-black text-slate-800 mb-1">${dept.code}</h3>
+                                <p class="text-slate-500 font-semibold text-sm leading-tight">${dept.name}</p>
+                            </div>
+                            <div class="relative w-14 h-14 rounded-full flex items-center justify-center chart-ring" style="${donutStyle}">
+                                <div class="absolute inset-1.5 bg-white rounded-full flex items-center justify-center">
+                                    <span class="text-sm font-black text-slate-700">${dept.averageProgress}%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="pt-4 border-t border-slate-100 flex justify-between items-center mt-auto">
+                            <span class="text-slate-500 text-[11px] font-bold bg-slate-50 px-2 py-1 rounded border border-slate-200">${dept.projects.length} مشروع</span>
+                            <span class="text-blue-600 text-xs font-bold hover:underline flex items-center gap-1">دخول القسم &larr;</span>
+                        </div>
+                    </div>
+                `;
+            });
+            html += `</div></div>`;
+            appDiv.innerHTML = html;
+            
+            // استخدام requestAnimationFrame لضمان تهيئة الشارت بشكل سليم
+            requestAnimationFrame(() => initChart()); 
+        }
+
+        // [تعديل]: تحديث دالة الرسم البياني لتدعم النوعين (Bar و Doughnut)
+        function initChart() {
+            if(mainChartInstance) mainChartInstance.destroy();
+            const ctx = document.getElementById('mainDashboardChart');
+            if(!ctx) return;
+            
+            if (state.chartView === 'deptBar') {
+                const labels = siteData.departments.map(d => d.code);
+                const data = siteData.departments.map(d => d.averageProgress);
+                const colors = siteData.departments.map(d => {
+                    let theme = getDeptTheme(d.code);
+                    return d.averageProgress === 100 ? '#10b981' : theme.ring;
+                });
+
+                mainChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderRadius: 4, barThickness: 32 }] },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { 
+                            y: { beginAtZero: true, max: 100, ticks: { font: { family: 'Cairo' } }, grid: { color: '#f8fafc' } }, 
+                            x: { ticks: { font: { family: 'Cairo', weight: 'bold' } }, grid: { display: false } } 
+                        }
+                    }
+                });
+            } else if (state.chartView === 'statusDoughnut') {
+                // حساب المشاريع المنتظمة (جاري العمل ناقص المتأخرة)
+                const regularCount = siteData.stats.inProgress - siteData.stats.delayed;
+                
+                mainChartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: { 
+                        labels: ['مشاريع مكتملة', 'منتظمة (في مسارها)', 'مشاريع متأخرة'], 
+                        datasets: [{ 
+                            data: [siteData.stats.completed, regularCount, siteData.stats.delayed], 
+                            backgroundColor: ['#10b981', '#3b82f6', '#ef4444'], 
+                            hoverOffset: 6,
+                            borderWidth: 3,
+                            borderColor: '#ffffff'
+                        }] 
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        cutout: '70%', 
+                        plugins: { 
+                            legend: { 
+                                position: window.innerWidth > 640 ? 'left' : 'bottom', 
+                                rtl: true, 
+                                labels: { font: { family: 'Cairo', size: 13, weight: 'bold' }, padding: 20 } 
+                            },
+                            tooltip: { rtl: true, titleFont: { family: 'Cairo', size: 14 }, bodyFont: { family: 'Cairo', size: 13, weight: 'bold' } }
+                        }
+                    }
+                });
+            }
+        }
+
+        function renderSearchResults() {
+            let html = `<div class="fade-in">${renderControls()}
+                <div class="flex justify-between items-end mb-4 border-b border-slate-200 pb-2">
+                    <h3 class="text-lg font-bold text-slate-800">نتائج البحث</h3>
+                    <button onclick="clearSearch()" class="text-sm font-bold text-blue-600 hover:underline">إلغاء الفلترة ✖</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">`;
+            
+            let allProjects = [];
+            siteData.departments.forEach((dept, dIndex) => {
+                dept.projects.forEach((proj, pIndex) => { allProjects.push({ ...proj, dIndex, pIndex, deptCode: dept.code }); });
+            });
+
+            let filtered = allProjects.filter(p => {
+                const searchNorm = normArabic(state.searchQuery);
+                const matchSearch = normArabic(p.title).includes(searchNorm) || 
+                                    normArabic(p.id).includes(searchNorm) || 
+                                    normArabic(p.supervisor).includes(searchNorm);
+                
+                let matchStatus = true;
+                if (state.statusFilter === 'Completed') matchStatus = p.completedWeeks === TOTAL_WEEKS;
+                else if (state.statusFilter === 'In Progress') matchStatus = p.completedWeeks < TOTAL_WEEKS;
+                else if (state.statusFilter === 'Delayed') matchStatus = (CURRENT_WEEK - p.completedWeeks) > 0 && p.completedWeeks < TOTAL_WEEKS;
+
+                return matchSearch && matchStatus;
+            });
+
+            if (state.sortFilter === 'high') filtered.sort((a, b) => b.progress - a.progress);
+            else if (state.sortFilter === 'low') filtered.sort((a, b) => a.progress - b.progress);
+            else if (state.sortFilter === 'az') filtered.sort((a, b) => a.title.localeCompare(b.title));
+
+            if (filtered.length === 0) {
+                html += `<div class="col-span-full bg-slate-50 p-12 text-center rounded-xl border border-slate-200 fade-in"><p class="text-slate-500 font-bold mb-3">لم نعثر على أي نتائج مطابقة.</p><button onclick="clearSearch()" class="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded-md font-bold text-sm shadow-sm hover:bg-slate-100">إعادة ضبط</button></div>`;
+            } else {
+                filtered.forEach((p, idx) => { html += createProjectCard(p, p.deptCode, p.dIndex, p.pIndex, idx * 0.05); });
+            }
+            html += `</div></div>`;
+            appDiv.innerHTML = html;
+        }
+
+        function renderDepartment() {
+            updateBreadcrumbs();
+            const dept = siteData.departments[state.activeDeptIndex];
+            let theme = getDeptTheme(dept.code);
+            
+            let html = `
+                <div class="fade-in">
+                    <button onclick="goHome()" class="mb-4 text-sm font-bold text-slate-500 hover:text-blue-600 flex items-center gap-1 transition-colors w-fit">
+                        <span>&rarr;</span> العودة للرئيسية
+                    </button>
+                    
+                    <div class="bg-white p-6 md:p-8 rounded-xl border border-slate-200 shadow-sm mb-8 border-t-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 print-break" style="border-top-color: ${theme.ring}">
+                        <div>
+                            <span class="${theme.bg} ${theme.text} text-xs font-bold px-2.5 py-1 rounded border ${theme.border} mb-3 inline-block">سجل مشاريع القسم</span>
+                            <h2 class="text-3xl font-black text-slate-800 mb-1">${dept.name} (${dept.code})</h2>
+                            <p class="text-slate-500 text-sm font-semibold">متابعة تسليم التقارير الأسبوعية لجميع المشاريع المعتمدة.</p>
+                        </div>
+                        <div class="bg-slate-50 px-6 py-4 rounded-lg border border-slate-200 text-center min-w-[140px]">
+                            <p class="text-xs text-slate-500 font-bold mb-1">متوسط الإنجاز للقسم</p>
+                            <h3 class="text-3xl font-black ${dept.averageProgress === 100 ? 'text-emerald-600' : 'text-slate-800'}">${dept.averageProgress}%</h3>
+                        </div>
+                    </div>
+                    ${renderControls()}
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            `;
+
+            let deptProjects = [...dept.projects].map((p, idx) => ({...p, originalIndex: idx}));
+            
+            if(state.searchQuery) {
+                const searchNorm = normArabic(state.searchQuery);
+                deptProjects = deptProjects.filter(p => 
+                    normArabic(p.title).includes(searchNorm) || 
+                    normArabic(p.id).includes(searchNorm) || 
+                    normArabic(p.supervisor).includes(searchNorm)
+                );
+            }
+            if(state.statusFilter !== 'All') {
+                deptProjects = deptProjects.filter(p => {
+                    if (state.statusFilter === 'Completed') return p.completedWeeks === TOTAL_WEEKS;
+                    if (state.statusFilter === 'In Progress') return p.completedWeeks < TOTAL_WEEKS;
+                    if (state.statusFilter === 'Delayed') return (CURRENT_WEEK - p.completedWeeks) > 0 && p.completedWeeks < TOTAL_WEEKS;
+                    return true;
+                });
+            }
+            if (state.sortFilter === 'high') deptProjects.sort((a, b) => b.progress - a.progress);
+            else if (state.sortFilter === 'low') deptProjects.sort((a, b) => a.progress - b.progress);
+            else if (state.sortFilter === 'az') deptProjects.sort((a, b) => a.title.localeCompare(b.title));
+
+            if(deptProjects.length === 0) {
+                html += `<div class="col-span-full bg-slate-50 p-12 text-center rounded-xl border border-slate-200 fade-in"><p class="text-slate-500 font-bold">لا توجد مشاريع مضافة أو مطابقة للبحث.</p></div>`;
+            } else {
+                deptProjects.forEach((p, idx) => { html += createProjectCard(p, dept.code, state.activeDeptIndex, p.originalIndex, idx * 0.05); });
+            }
+            html += `</div></div>`;
+            appDiv.innerHTML = html;
+        }
+
+        function renderProject() {
+            updateBreadcrumbs();
+            const dept = siteData.departments[state.activeDeptIndex];
+            const project = dept.projects[state.activeProjIndex];
+            let isComplete = project.completedWeeks === TOTAL_WEEKS;
+
+            let html = `
+                <div class="fade-in max-w-3xl mx-auto">
+                    <div class="flex items-center gap-4 mb-4">
+                        <button onclick="goDept(${state.activeDeptIndex})" class="text-sm font-bold text-slate-500 hover:text-blue-600 flex items-center gap-1 transition-colors no-print">
+                            <span>&rarr;</span> رجوع لقائمة القسم
+                        </button>
+                    </div>
+
+                    <div class="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-200 print-break">
+                        <div class="border-b border-slate-200 pb-6 mb-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="bg-slate-100 text-slate-700 text-xs font-bold px-3 py-1.5 rounded border border-slate-200 tracking-wider">رقم المرجع: ${project.id}</span>
+                                ${getHealthBadge(project.completedWeeks)}
+                            </div>
+                            <h2 class="text-2xl md:text-3xl font-black text-slate-800 leading-snug mb-2">${project.title}</h2>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mb-8">
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <p class="text-xs text-slate-500 font-bold mb-1">المشرف الأكاديمي</p>
+                                <p class="font-bold text-slate-800 text-sm md:text-base">${project.supervisor}</p>
+                            </div>
+                            <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                <p class="text-xs text-slate-500 font-bold mb-1">القسم الأكاديمي</p>
+                                <p class="font-bold text-slate-800 text-sm md:text-base">${dept.name} (${dept.code})</p>
+                            </div>
+                        </div>
+
+                        <div class="mb-8 bg-slate-50 p-5 md:p-6 rounded-lg border border-slate-200">
+                            <div class="flex justify-between items-end mb-3">
+                                <div>
+                                    <h4 class="font-bold text-slate-800 mb-1">سجل التقارير الأسبوعية</h4>
+                                    <p class="text-xs text-slate-500 font-semibold">تم تسليم ${project.completedWeeks} من أصل ${TOTAL_WEEKS} تقارير مطلوبة للترم.</p>
+                                </div>
+                                <span class="text-2xl md:text-3xl font-black ${isComplete ? 'text-emerald-600' : 'text-blue-600'}">${project.progress}%</span>
+                            </div>
+                            ${renderSegmentedBar(project.completedWeeks)}
+                        </div>
+
+                        <div class="space-y-4 md:space-y-6 border-t border-slate-200 pt-6 md:pt-8 no-print">
+                            <a href="${project.student_url}" target="_blank" rel="noopener noreferrer" 
+                               class="group flex items-center justify-between w-full bg-white hover:bg-slate-50 text-slate-800 font-bold py-5 md:py-6 px-5 md:px-8 rounded-2xl border-2 border-slate-200 hover:border-blue-400 transition-all shadow-sm">
+                                <div class="flex items-center gap-4 md:gap-6">
+                                    <div class="bg-blue-100 p-3 md:p-4 rounded-xl text-3xl md:text-4xl">👨‍🎓</div>
+                                    <div class="text-right">
+                                        <div class="text-lg md:text-xl text-slate-800">صفحة الطلاب (Student Page)</div>
+                                        <div class="text-[11px] md:text-sm text-slate-500 font-normal mt-1">تتطلب صلاحية الوصول كطالب في مساحة العمل</div>
+                                    </div>
+                                </div>
+                                <span class="text-slate-300 group-hover:text-blue-500 text-2xl transition-colors hidden sm:block">&larr;</span>
+                            </a>
+                            
+                            <a href="${project.tamkeen_url}" target="_blank" rel="noopener noreferrer" 
+                               class="group flex items-center justify-between w-full bg-slate-900 hover:bg-blue-900 text-white font-bold py-5 md:py-6 px-5 md:px-8 rounded-2xl border-2 border-transparent transition-all shadow-md hover:shadow-xl">
+                                <div class="flex items-center gap-4 md:gap-6">
+                                    <div class="bg-slate-800 group-hover:bg-blue-800 p-3 md:p-4 rounded-xl text-3xl md:text-4xl transition-colors">🏢</div>
+                                    <div class="text-right">
+                                        <div class="text-lg md:text-xl">صفحة التمكين (Tamkeen Page)</div>
+                                        <div class="text-[11px] md:text-sm text-slate-400 font-normal mt-1">خاصة بإدارة التمكين والتقييم النهائي</div>
+                                    </div>
+                                </div>
+                                <span class="text-slate-500 group-hover:text-blue-300 text-2xl transition-colors hidden sm:block">&larr;</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            appDiv.innerHTML = html;
+        }
+
+        function goHome() { state.view = 'home'; state.activeDeptIndex = null; state.activeProjIndex = null; renderHome(); }
+        function goDept(dIndex) { state.view = 'dept'; state.activeDeptIndex = dIndex; state.activeProjIndex = null; renderDepartment(); }
+        function goProject(dIndex, pIndex) { state.view = 'project'; state.activeDeptIndex = dIndex; state.activeProjIndex = pIndex; renderProject(); }
+        
+        function debouncedSearch(q) {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => { state.searchQuery = q; reRenderCurrentView(); }, 300);
+        }
+        function handleFilter(s) { state.statusFilter = s; reRenderCurrentView(); }
+        function handleSort(s) { state.sortFilter = s; reRenderCurrentView(); }
+        function clearSearch() { state.searchQuery = ''; state.statusFilter = 'All'; state.sortFilter = 'default'; reRenderCurrentView(); }
+        
+        function reRenderCurrentView() { 
+            if(state.view === 'home') renderHome(); 
+            else if(state.view === 'dept') renderDepartment(); 
+            else if(state.view === 'project') renderProject();
+        }
+
+        fetchAndBuildData();
+    </script>
+</body>
+</html>
