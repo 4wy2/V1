@@ -900,92 +900,146 @@
         }
     }
 
-    const ID_API_BASE = "https://eec.mohammed-rasasi.workers.dev";
+   const ID_API_BASE = "https://eec.mohammed-rasasi.workers.dev";
+
+// دالة تحويل الأرقام العربية إلى إنجليزية
+function convertArabicToEnglishNumbers(str) {
+    const arabic = '٠١٢٣٤٥٦٧٨٩';
+    const english = '0123456789';
+    return String(str || '').split('').map(ch => {
+        const i = arabic.indexOf(ch);
+        return i !== -1 ? english[i] : ch;
+    }).join('');
+}
+
+// دالة استخراج وتنسيق التاريخ
+function parseTxtDate(dateStr) {
+    const m = String(dateStr || '').match(/(\d{2})-(\d{2})-(\d{4})\s*\((\w+)\)/);
+    if (!m) return null;
+    return { dd: m[1], mm: m[2], yyyy: m[3] };
+}
+
+// دالة تحويل مدة الاختبار لصيغة مقروءة (س / د)
+function formatDurationID(raw) {
+    if (!raw) return "";
     
-    function convertArabicToEnglishNumbers(str) {
-        const arabic = '٠١٢٣٤٥٦٧٨٩'; const english = '0123456789';
-        return String(str || '').split('').map(ch => {
-            const i = arabic.indexOf(ch); return i !== -1 ? english[i] : ch;
-        }).join('');
+    const h = raw.match(/(\d+)\s*H/i);
+    const m = raw.match(/(\d+)\s*M/i);
+    
+    const hours = h ? Number(h[1]) : 0;
+    const minutes = m ? Number(m[1]) : 0;
+    
+    let res = [];
+    if (hours) res.push(`${hours}س`);
+    if (minutes) res.push(`${minutes}د`);
+    
+    return res.join(' ') || raw;
+}
+
+// الدالة الرئيسية للبحث بالرقم الأكاديمي
+async function doIdSearch() {
+    const inputEl = document.getElementById('studentIdInput');
+    const cleaned = convertArabicToEnglishNumbers(inputEl.value).trim().replace(/\D/g, '');
+    const idNum = Number(cleaned);
+    
+    const resultsArea = document.getElementById('idResultsArea');
+    const tableHeader = document.getElementById('idTableHeader');
+
+    // التحقق من إدخال رقم صحيح
+    if (!idNum) { 
+        showToast('الرجاء إدخال رقم أكاديمي صحيح', 'warning'); 
+        return; 
     }
 
-    function parseTxtDate(dateStr) {
-        const m = String(dateStr || '').match(/(\d{2})-(\d{2})-(\d{4})\s*\((\w+)\)/);
-        if (!m) return null; return { dd: m[1], mm: m[2], yyyy: m[3] };
-    }
+    // إظهار حالة التحميل (Spinner)
+    resultsArea.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>جاري سحب الجدول...</p></div>';
+    tableHeader.style.display = 'none';
 
-    function formatDurationID(raw) {
-        if (!raw) return "";
-        const h = raw.match(/(\d+)\s*H/i); const m = raw.match(/(\d+)\s*M/i);
-        const hours = h ? Number(h[1]) : 0; const minutes = m ? Number(m[1]) : 0;
-        let res = [];
-        if (hours) res.push(`${hours}س`); if (minutes) res.push(`${minutes}د`);
-        return res.join(' ') || raw;
-    }
+    try {
+        const url = `${ID_API_BASE}/exams?studentId=${encodeURIComponent(idNum)}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        const text = await res.text();
+        
+        if (!res.ok) throw new Error(text);
+        
+        const data = JSON.parse(text);
+        const records = data.records || [];
 
-    async function doIdSearch() {
-        const inputEl = document.getElementById('studentIdInput');
-        const cleaned = convertArabicToEnglishNumbers(inputEl.value).trim().replace(/\D/g, '');
-        const idNum = Number(cleaned);
-        const resultsArea = document.getElementById('idResultsArea');
-        const tableHeader = document.getElementById('idTableHeader');
-
-        if (!idNum) { showToast('الرجاء إدخال رقم أكاديمي صحيح', 'warning'); return; }
-
-        resultsArea.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>جاري سحب الجدول...</p></div>';
-        tableHeader.style.display = 'none';
-
-        try {
-            const url = `${ID_API_BASE}/exams?studentId=${encodeURIComponent(idNum)}`;
-            const res = await fetch(url, { cache: 'no-store' });
-            const text = await res.text();
-            
-            if (!res.ok) throw new Error(text);
-            const data = JSON.parse(text);
-            const records = data.records || [];
-
-            if (records.length === 0) {
-                resultsArea.innerHTML = '<div class="empty-state"><p>لا يوجد جدول متاح لهذا الرقم.</p></div>'; return;
-            }
-
-            localStorage.setItem('ee_saved_student_id', idNum);
-
-            tableHeader.style.display = 'grid'; resultsArea.innerHTML = '';
-
-            records.forEach(r => {
-                const row = document.createElement('div'); row.className = 'row';
-                const d = parseTxtDate(r.dateStr);
-                const dateNum = d ? `${d.dd}-${d.mm}-${d.yyyy}` : r.dateStr.split(' ')[0];
-                const dayAr = d ? dayjs(`${d.yyyy}-${d.mm}-${d.dd}`).format('dddd') : '';
-                const timeParts = String(r.timeStr).split("-").map(p => p.trim());
-                const t1 = timeParts[0] || ""; const t2 = timeParts[1] || "";
-                const duration = formatDurationID(r.duration);
-
-                /* 🚨 التعديل على تصميم الجافاسكربت: شلت font-size:12px الإجباري عشان يشتغل تجاوب الجوال 🚨 */
-                row.innerHTML = `
-                    <div class="exam-info"><span class="label">${r.courseCode}</span></div>
-                    <div class="exam-date">
-                        <div class="exam-date-text"><b>${dateNum}</b><small style="color:var(--accent);">${dayAr}</small></div>
-                        <div class="exam-date-line" style="background:var(--accent);"></div>
-                    </div>
-                    <div class="exam-time"><div class="exam-time-inner"><div class="exam-time-start">${t1}</div><div class="exam-time-end">${t2}</div></div></div>
-                    <div class="exam-duration"><span>${duration}</span></div>
-                    <div class="exam-venue">${r.venue || '-'}</div>
-                `;
-                resultsArea.appendChild(row);
-            });
-            showToast('تم جلب الجدول بنجاح!', 'success');
-        } catch (err) {
-            resultsArea.innerHTML = '<div class="empty-state" style="color:var(--danger)"><i class="fa-solid fa-triangle-exclamation"></i><p>حدث خطأ أثناء جلب البيانات</p></div>';
+        // إذا لم يتم العثور على جدول
+        if (records.length === 0) {
+            resultsArea.innerHTML = '<div class="empty-state"><p>لا يوجد جدول متاح لهذا الرقم.</p></div>'; 
+            return;
         }
+
+        // حفظ الرقم الأكاديمي في المتصفح
+        localStorage.setItem('ee_saved_student_id', idNum);
+
+        // تجهيز الجدول لعرض البيانات
+        tableHeader.style.display = 'grid'; 
+        resultsArea.innerHTML = '';
+
+        // بناء صفوف الجدول
+        records.forEach(r => {
+            const row = document.createElement('div'); 
+            row.className = 'row';
+            
+            const d = parseTxtDate(r.dateStr);
+            const dateNum = d ? `${d.dd}-${d.mm}-${d.yyyy}` : r.dateStr.split(' ')[0];
+            const dayAr = d ? dayjs(`${d.yyyy}-${d.mm}-${d.dd}`).format('dddd') : '';
+            
+            const timeParts = String(r.timeStr).split("-").map(p => p.trim());
+            const t1 = timeParts[0] || ""; 
+            const t2 = timeParts[1] || "";
+            
+            const duration = formatDurationID(r.duration);
+
+            // إدراج HTML للصف (بدون ستايلات إجبارية ليتناسب مع الجوال)
+            row.innerHTML = `
+                <div class="exam-info">
+                    <span class="label">${r.courseCode}</span>
+                </div>
+                <div class="exam-date">
+                    <div class="exam-date-text">
+                        <b>${dateNum}</b>
+                        <small style="color:var(--accent);">${dayAr}</small>
+                    </div>
+                    <div class="exam-date-line" style="background:var(--accent);"></div>
+                </div>
+                <div class="exam-time">
+                    <div class="exam-time-inner">
+                        <div class="exam-time-start">${t1}</div>
+                        <div class="exam-time-end">${t2}</div>
+                    </div>
+                </div>
+                <div class="exam-duration">
+                    <span>${duration}</span>
+                </div>
+                <div class="exam-venue">${r.venue || '-'}</div>
+            `;
+            resultsArea.appendChild(row);
+        });
+        
+        showToast('تم جلب الجدول بنجاح!', 'success');
+        
+    } catch (err) {
+        resultsArea.innerHTML = '<div class="empty-state" style="color:var(--danger)"><i class="fa-solid fa-triangle-exclamation"></i><p>حدث خطأ أثناء جلب البيانات</p></div>';
     }
+}
 
-    document.getElementById('studentIdInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') doIdSearch(); });
+// مستمع حدث لزر (Enter) في خانة البحث بالآيدي
+document.getElementById('studentIdInput').addEventListener('keypress', (e) => { 
+    if (e.key === 'Enter') {
+        doIdSearch();
+    }
+});
 
-    document.getElementById('searchInput').addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => { doSearch(); }, 150); 
-    });
+// مستمع حدث للبحث اليدوي
+document.getElementById('searchInput').addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => { 
+        doSearch(); 
+    }, 150); 
+});
 </script>
 </body>
 </html>
