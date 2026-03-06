@@ -141,7 +141,7 @@
     .exam-duration { text-align: center; display: flex; flex-direction: column; justify-content: center; flex: 0.7; }
     .exam-duration span:first-child { font-size: 10px; font-weight: 700; color: #eee; display: block; }
     .exam-duration span:last-child { font-size: 8px; opacity: 0.3; display: block; }
-    .exam-venue { color: var(--ee-cyan); font-weight: 900; font-size: 12px; }
+    .exam-venue { color: var(--ee-cyan); font-weight: 900; font-size: 12px; text-align: center; }
     .exam-actions { display: flex; justify-content: center; align-items: center; flex: 0.4; }
 
     /* 7. الأزرار والعناوين */
@@ -164,15 +164,22 @@
         .search-wrapper { padding: 15px 15px 20px; }
         .search-wrapper input { padding: 14px 45px 14px 20px; font-size: 14px; }
         .search-icon { right: 15px; font-size: 15px; }
-        .table-header, .row { grid-template-columns: 1fr 65px 65px 50px 35px; gap: 3px; padding: 10px 5px; margin: 3px 0; border-radius: 0; border-left: none; border-right: none; }
-        .id-grid .table-header, .id-grid .row { grid-template-columns: 1fr 65px 65px 40px 45px !important; }
+        
+        /* 🚨 التعديل الرئيسي لمقاسات الجوال 🚨 */
+        .table-header, .row { grid-template-columns: 1fr 65px 65px 45px 35px; gap: 3px; padding: 10px 5px; margin: 3px 0; border-radius: 0; border-left: none; border-right: none; }
+        .id-grid .table-header, .id-grid .row { grid-template-columns: 1.2fr 60px 60px 35px 55px !important; }
         .read-only-view .table-header, .read-only-view .row { grid-template-columns: 1fr 65px 65px 50px !important; }
+        
         .table-header { font-size: 9px; padding: 8px 5px; }
         .exam-info .label { font-size: 12px !important; }
         .exam-info .sub { font-size: 8px !important; line-height: 1.1; }
         .exam-date-text b { font-size: 10px !important; }
         .exam-date-text small { font-size: 7px !important; }
         .exam-time-inner { min-width: 62px !important; padding: 4px 0 !important; font-size: 8px !important; }
+        .exam-duration span:first-child { font-size: 9px !important; } /* تصغير الخطوط لتناسب المساحة */
+        .exam-duration span:last-child { font-size: 7px !important; }
+        .exam-venue { font-size: 9px !important; line-height: 1.2; word-break: break-word; } /* تصغير اسم القاعة */
+        
         .btn-action { width: 24px; height: 24px; border-radius: 6px; font-size: 11px; }
         .section-title { padding: 15px 10px 5px; font-size: 12px; }
         .empty-state { padding: 50px 15px; }
@@ -356,28 +363,24 @@
         }
         dayjs.locale('ar'); 
 
-        // 🌟 الإضافة الأولى: استرجاع الرقم الأكاديمي إذا كان محفوظاً ووضعه في خانة البحث
         const savedStudentId = localStorage.getItem('ee_saved_student_id');
         if (savedStudentId) {
             document.getElementById('studentIdInput').value = savedStudentId;
         }
 
-        // 🌟 إصلاح مشكلة حذف المواد في الجداول القديمة للطلاب 🌟
         let needsUpdate = false;
         myExams = myExams.map(ex => {
-            if (!ex.id) { // إذا كانت المادة قديمة ولا تحتوي على ID
-                ex.id = generateExamId(ex); // قم بتوليد ID لها
+            if (!ex.id) { 
+                ex.id = generateExamId(ex); 
                 needsUpdate = true;
             }
             return ex;
         });
         
-        // إذا وجدنا مواد قديمة وتم تحديثها، نحفظ التعديل في جهاز الطالب
         if (needsUpdate) {
             localStorage.setItem('yic_saved_exams', JSON.stringify(myExams));
         }
 
-        // مستمعات الأحداث لإغلاق البوب أب
         const popupOverlay = document.getElementById('takeoverPopup');
         popupOverlay.addEventListener('click', (e) => {
             if (e.target === popupOverlay) closePopup();
@@ -395,7 +398,6 @@
     let countdownTimer;
     let isSharedView = false;
 
-    // --- وظائف النافذة الذكية والتبويبات ---
     function closePopup() {
         const popup = document.getElementById('takeoverPopup');
         
@@ -459,7 +461,6 @@
         return `${ex.code.trim()}_${ex.date.trim()}_${ex.time.trim()}`;
     }
 
-    // --- تأثير الطيران ---
     function animateFly(startElement, isDelete = false) {
         if (!startElement) return;
         const startRect = startElement.getBoundingClientRect();
@@ -489,7 +490,6 @@
     const API_URL = 'https://examdata.mohammed-rasasi.workers.dev/?campus=main';
 
     try {
-        // مسح الكاش القديم فوراً لضمان ظهور جداول الميد الجديدة للجميع
         localStorage.removeItem('all_exams_cache');
         
         const response = await fetch(API_URL);
@@ -497,7 +497,6 @@
 
         const data = await response.json();
         
-        // حقن بيانات الـ Config في العناوين بوضوح
         if (data.config) {
             const semesterEl = document.getElementById('dynamicSemester');
             if (data.config.semester) {
@@ -901,7 +900,6 @@
         }
     }
 
-    // --- منطق بحث الرقم الأكاديمي ---
     const ID_API_BASE = "https://eec.mohammed-rasasi.workers.dev";
     
     function convertArabicToEnglishNumbers(str) {
@@ -950,7 +948,6 @@
                 resultsArea.innerHTML = '<div class="empty-state"><p>لا يوجد جدول متاح لهذا الرقم.</p></div>'; return;
             }
 
-            // 🌟 الإضافة الثانية: حفظ الرقم الأكاديمي بعد نجاح عملية البحث
             localStorage.setItem('ee_saved_student_id', idNum);
 
             tableHeader.style.display = 'grid'; resultsArea.innerHTML = '';
@@ -964,6 +961,7 @@
                 const t1 = timeParts[0] || ""; const t2 = timeParts[1] || "";
                 const duration = formatDurationID(r.duration);
 
+                /* 🚨 التعديل على تصميم الجافاسكربت: شلت font-size:12px الإجباري عشان يشتغل تجاوب الجوال 🚨 */
                 row.innerHTML = `
                     <div class="exam-info"><span class="label">${r.courseCode}</span></div>
                     <div class="exam-date">
@@ -971,7 +969,7 @@
                         <div class="exam-date-line" style="background:var(--accent);"></div>
                     </div>
                     <div class="exam-time"><div class="exam-time-inner"><div class="exam-time-start">${t1}</div><div class="exam-time-end">${t2}</div></div></div>
-                    <div class="exam-duration"><span style="font-size:12px">${duration}</span></div>
+                    <div class="exam-duration"><span>${duration}</span></div>
                     <div class="exam-venue">${r.venue || '-'}</div>
                 `;
                 resultsArea.appendChild(row);
