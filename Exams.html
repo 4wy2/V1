@@ -165,13 +165,20 @@
     .fly-item.delete { color: var(--danger); filter: drop-shadow(0 0 10px var(--danger)); }
 
     /* 8. التنسيق النحيف للجوال */
-    @media (max-width: 600px) {
+   @media (max-width: 600px) {
         .app { width: 100%; margin: 0; border-radius: 0; border: none; }
         .tabs-container { padding: 0 10px 15px; }
         .tab-btn { padding: 10px 15px; font-size: 11px; flex: 1; justify-content: center; }
         .search-wrapper { padding: 15px 15px 20px; }
         .search-wrapper input { padding: 14px 45px 14px 20px; font-size: 14px; }
         .search-icon { right: 15px; font-size: 15px; }
+        
+        /* 🌟 التعديلات الجديدة لمربع البحث بالرقم الأكاديمي 🌟 */
+        .id-search-area { flex-direction: column; gap: 10px; margin-bottom: 20px; padding: 0 15px; }
+        .id-search-area input { width: 100%; padding: 12px 15px; font-size: 14px; box-sizing: border-box; }
+        .id-search-area button { width: 100%; padding: 12px; font-size: 13px; border-radius: 14px; }
+        /* ------------------------------------------------ */
+
         .table-header, .row { grid-template-columns: 1fr 65px 65px 50px 35px; gap: 3px; padding: 10px 5px; margin: 3px 0; border-radius: 0; border-left: none; border-right: none; }
         .read-only-view .table-header, .read-only-view .row { grid-template-columns: 1fr 65px 65px 50px !important; }
         .table-header { font-size: 9px; padding: 8px 5px; }
@@ -188,7 +195,6 @@
         .back-home { top: 15px; right: 15px; padding: 8px 12px; font-size: 11px; }
         .popup-content { padding: 30px 20px; margin: 0 15px; }
     }
-
     /* 9. تنسيق حالة البحث الفارغة */
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; text-align: center; color: var(--text-dim); animation: fadeIn 0.8s ease-out; }
     .empty-state i { font-size: 55px; margin-bottom: 20px; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; opacity: 0.3; }
