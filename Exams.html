@@ -389,7 +389,7 @@
             popup.style.display = 'none';
             popup.classList.remove('popup-closing');
         }, 300); // 300ms وهي نفس مدة الأنيميشن
-        sessionStorage.setItem('idPopupClosed', 'true');
+        localStorage.setItem('idPopupClosed', 'true');
     }
 
     // إغلاق عند النقر خارج المربع
@@ -521,7 +521,7 @@
                         switchTab('idSearch');
                     }
                     
-                    if (!sessionStorage.getItem('idPopupClosed') && !new URLSearchParams(window.location.search).get('shared')) {
+                    if (!localStorage.getItem('idPopupClosed') && !new URLSearchParams(window.location.search).get('shared')) {
                         document.getElementById('takeoverPopup').style.display = 'flex';
                         // التعديل: التركيز التلقائي على الزر لسهولة الاستخدام
                         setTimeout(() => document.querySelector('#takeoverPopup .btn-primary-glow').focus(), 100);
