@@ -9,12 +9,12 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <style>
-    :root { --primary: #1e40af; --bg: #f8fafc; --ramadan-theme: #059669; }
+    :root { --primary: #1e40af; --bg: #f8fafc; --midterm-theme: #dc2626; }
     body { font-family: 'Cairo', sans-serif; background: var(--bg); padding: 5px; color: #1e293b; overflow-x: hidden; }
     
     .control-panel { background: white; border-radius: 12px; padding: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 10px; border: 1px solid #e2e8f0; }
-    .ramadan-box { border: 2px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
-    .ramadan-note { background: #eff6ff; padding: 8px; border-bottom: 1px solid #e2e8f0; }
+    .midterm-box { border: 2px solid #e2e8f0; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+    .midterm-note { background: #fef2f2; padding: 8px; border-bottom: 1px solid #e2e8f0; }
 
     .input-group input { width: 100%; background: #f1f5f9; border: 2px solid #e2e8f0; border-radius: 8px; padding: 8px; font-weight: 700; font-size: 13px; margin-bottom: 6px; outline: none; transition: 0.2s; }
     .input-group input:focus { border-color: var(--primary); }
@@ -31,7 +31,7 @@
     .header-pill { background: #1e293b; color: white; padding: 6px 0; font-weight: 900; font-size: 9px; text-align: center; }
     .cell-base { background: white; min-height: 45px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; padding: 2px; transition: background-color 0.3s; }
     .time-cell { background: #f8fafc; color: var(--primary); font-weight: 900; border-left: 1.5px solid #cbd5e1; }
-    .ramadan-mode-active .time-cell { color: var(--ramadan-theme); background: #f0fdf4; }
+    .midterm-mode-active .time-cell { color: var(--midterm-theme); background: #fef2f2; }
 
     .time-cell div:first-child { font-size: 10px; line-height: 1; }
     .time-cell div:last-child { font-size: 8px; opacity: 0.6; }
@@ -130,15 +130,15 @@
     </div>
 
     <div class="border-t border-slate-100 pt-3">
-        <div id="ramadan-box" class="ramadan-box mb-2">
-            <div class="ramadan-note">
-                <p id="ramadan-note-text" class="text-[10px] text-blue-800 font-semibold italic text-center">
+        <div id="midterm-box" class="midterm-box mb-2">
+            <div class="midterm-note">
+                <p id="midterm-note-text" class="text-[10px] text-red-800 font-semibold italic text-center">
                     💡 ملاحظة: الألوان ثابتة ومميزة لكل مادة تلقائياً.
                 </p>
             </div>
-            <button id="ramadan-toggle" onclick="toggleRamadanMode()" class="w-full bg-slate-800 text-white py-2.5 text-[11px] font-black flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95">
-                <span id="ramadan-text">توقيت شهر رمضان المبارك</span>
-                <span id="ramadan-badge" class="bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] animate-pulse">ON</span>
+            <button id="midterm-toggle" onclick="toggleMidtermMode()" class="w-full bg-slate-800 text-white py-2.5 text-[11px] font-black flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95">
+                <span id="midterm-text">توقيت الاختبارات النصفية</span>
+                <span id="midterm-badge" class="bg-red-500 text-white px-2 py-0.5 rounded-full text-[8px] animate-pulse">ON</span>
             </button>
         </div>
         <button onclick="resetAll()" class="w-full text-red-500 font-bold text-[10px] active:scale-95 transition-all">تصفية الجدول</button>
@@ -171,19 +171,19 @@
     { id: "51", s: "03:15 PM", e: "04:05 PM" }
   ];
 
-  // أوقات رمضان المحدثة
-  const RAMADAN_SLOTS = [
-    { id: "54", s: "10:00 AM", e: "10:35 AM" }, { id: "86", s: "10:40 AM", e: "11:15 AM" },
-    { id: "44", s: "11:20 AM", e: "11:55 AM" }, { id: "80", s: "12:00 PM", e: "12:35 PM" },
-    { id: "57", s: "01:00 PM", e: "01:35 PM" }, { id: "47", s: "01:40 PM", e: "02:15 PM" },
-    { id: "63", s: "02:20 PM", e: "02:55 PM" }, { id: "52", s: "03:00 PM", e: "03:35 PM" },
-    { id: "51", s: "03:40 PM", e: "04:15 PM" }
+  // أوقات الاختبارات النصفية المحدثة
+  const MIDTERM_SLOTS = [
+    { id: "54", s: "07:15 AM", e: "07:55 AM" }, { id: "86", s: "08:00 AM", e: "08:40 AM" },
+    { id: "44", s: "08:45 AM", e: "09:25 AM" }, { id: "80", s: "10:55 AM", e: "11:35 AM" },
+    { id: "57", s: "11:40 AM", e: "12:20 PM" }, { id: "47", s: "12:25 PM", e: "01:05 PM" },
+    { id: "63", s: "02:35 PM", e: "03:15 PM" }, { id: "52", s: "03:20 PM", e: "04:00 PM" },
+    { id: "51", s: "04:05 PM", e: "04:45 PM" }
   ];
 
   let scheduleData = JSON.parse(localStorage.getItem("ev_v10")) || [];
   let currentSelectedDays = new Map();
   let editMode = false;
-  let isRamadanMode = JSON.parse(localStorage.getItem("ramadan_active")) || false;
+  let isMidtermMode = JSON.parse(localStorage.getItem("midterm_active")) || false;
 
   // ==== 🎛️ دالة تبديل وضع الإنشاء ====
   function switchMode(mode) {
@@ -292,7 +292,7 @@
   // ==== رسم الجدول ====
   function renderTable() {
     const container = document.getElementById("grid-container");
-    const ACTIVE_SLOTS = isRamadanMode ? RAMADAN_SLOTS : TIME_SLOTS;
+    const ACTIVE_SLOTS = isMidtermMode ? MIDTERM_SLOTS : TIME_SLOTS;
     
     let lastSlotIndex = 4;
     if (scheduleData.length > 0) {
@@ -306,8 +306,13 @@
     container.innerHTML = `<div class="header-pill">الوقت</div>` + ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس"].map(d => `<div class="header-pill">${d}</div>`).join("");
     
     visibleSlots.forEach(slot => {
-      if (isRamadanMode && slot.id === "57") {
-          container.innerHTML += `<div class="col-span-6 bg-slate-100 text-emerald-800 text-[8px] font-black py-0.5 text-center italic border-y border-emerald-100">فترة صلاة الظهر</div>`;
+      // تنبيه الفترة الأولى للاختبارات
+      if (isMidtermMode && slot.id === "80") {
+          container.innerHTML += `<div class="col-span-6 bg-red-100 text-red-800 text-[10px] font-black py-1 text-center italic border-y border-red-200">الفترة الأولى للاختبارات (09:40 AM - 10:40 AM)</div>`;
+      }
+      // تنبيه الفترة الثانية للاختبارات
+      if (isMidtermMode && slot.id === "63") {
+          container.innerHTML += `<div class="col-span-6 bg-red-100 text-red-800 text-[10px] font-black py-1 text-center italic border-y border-red-200">الفترة الثانية للاختبارات (01:20 PM - 02:20 PM)</div>`;
       }
       
       container.innerHTML += `<div class="cell-base time-cell"><div>${slot.s}</div><div>${slot.e}</div></div>`;
@@ -329,26 +334,26 @@
     });
   }
 
-  function toggleRamadanMode() {
-    isRamadanMode = !isRamadanMode;
-    localStorage.setItem("ramadan_active", isRamadanMode);
-    updateRamadanUI();
+  function toggleMidtermMode() {
+    isMidtermMode = !isMidtermMode;
+    localStorage.setItem("midterm_active", isMidtermMode);
+    updateMidtermUI();
     renderTable(); 
   }
 
-  function updateRamadanUI() {
-    const btn = document.getElementById("ramadan-toggle");
+  function updateMidtermUI() {
+    const btn = document.getElementById("midterm-toggle");
     const subLabel = document.getElementById("sub-label");
     const area = document.getElementById("display-area");
     
-    if(isRamadanMode) {
-        btn.classList.replace("bg-slate-800", "bg-emerald-600");
-        subLabel.innerText = "توقيت شهر رمضان المبارك (12H)";
-        area.classList.add("ramadan-mode-active");
+    if(isMidtermMode) {
+        btn.classList.replace("bg-slate-800", "bg-red-700");
+        subLabel.innerText = "توقيت الاختبارات النصفية (12H)";
+        area.classList.add("midterm-mode-active");
     } else {
-        btn.classList.replace("bg-emerald-600", "bg-slate-800");
+        btn.classList.replace("bg-red-700", "bg-slate-800");
         subLabel.innerText = "الجدول الدراسي الأكاديمي (12H)";
-        area.classList.remove("ramadan-mode-active");
+        area.classList.remove("midterm-mode-active");
     }
   }
 
@@ -441,7 +446,7 @@
   }
 
   // التهيئة الأولى
-  updateRamadanUI();
+  updateMidtermUI();
   renderTable();
 </script>
 </body>
