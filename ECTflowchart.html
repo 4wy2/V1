@@ -533,10 +533,9 @@
                 <div class="card" id="ENG101"><div class="code">ENG 101</div><div class="name">English Comm.</div></div>
                 <div class="card" id="GSMA101"><div class="code">GSMA 101</div><div class="name">Calculus I</div></div>
                 <div class="card" id="ELET104"><div class="code">ELET 104</div><div class="name">Computer Programming</div></div>
-                
-                <div class="card" id="GSPE101"><div class="code">GSPE 101</div><div class="name">Physical Education I</div></div>
-                <div class="card" id="ELET101"><div class="code">ELET 101</div><div class="name">Electrical Circuits I</div></div>
                 <div class="card" id="GSPH101"><div class="code">GSPH 101</div><div class="name">General Physics</div></div>
+                <div class="card" id="ELET101"><div class="code">ELET 101</div><div class="name">Electrical Circuits I</div></div>
+                <div class="card" id="GSPE101"><div class="code">GSPE 101</div><div class="name">Physical Education I</div></div>
             </div>
         </div>
         <div class="semester-row">
@@ -638,7 +637,7 @@ let initialPinchDist = null;
 
 const connections = [
   // SEM 2
-  { from: 'ELET101', to: 'GSPH101', type: 'co' },
+  { from: 'GSPH101', to: 'ELET101', type: 'co' },
   { from: 'GSMA101', to: 'GSMA102', type: 'pre' },
   { from: 'ENG101',  to: 'ENG102',  type: 'pre' },
   { from: 'ELET101', to: 'ELET102', type: 'pre' },
